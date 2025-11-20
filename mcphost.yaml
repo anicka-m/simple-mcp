@@ -1,0 +1,8 @@
+provider-url: "http://localhost:11434"
+model: "ollama:qwen3-coder:30b"
+system-prompt: "systemprompt.txt"
+
+mcpServers:
+  simple-mcp:
+    type: "remote"
+    url: "http://10.99.0.157:8080/mcp"

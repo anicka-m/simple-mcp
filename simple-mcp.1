@@ -1,0 +1,57 @@
+.TH SIMPLE-MCP 1 "November 2025" "0.6" "Simple MCP Manual"
+.SH NAME
+simple-mcp \- Simple Model Context Protocol (MCP) server in Go
+.SH SYNOPSIS
+.B simple-mcp
+[\fI\-config file\fR] [\fI\-listen-addr address\fR]
+.SH DESCRIPTION
+.B simple-mcp
+is a lightweight server implementing the Model Context Protocol (MCP). It is designed to bridge Large Language Model (LLM) agents with the local Linux system.
+
+It exposes a set of "Tools" (executable commands) and "Resources" (static or dynamic system data) defined in a YAML configuration file. This allows an LLM to query system status (e.g., uptime, logs) or perform actions (e.g., upgrades, reboots) in a controlled environment.
+
+.SH OPTIONS
+.TP
+.BI \-config " file"
+Path to the YAML configuration file.
+.br
+Default: \fI./simple-mcp.yaml\fR (or \fI/etc/simple-mcp/simple-mcp.yaml\fR when running as a system service).
+.TP
+.BI \-listen-addr " address"
+The network address and port to listen on for HTTP requests.
+.br
+Default: \fI:8080\fR
+.SH CONFIGURATION
+The behavior of the server is defined in \fBsimple-mcp.yaml\fR.
+.P
+This file defines:
+.IP \[bu] 2
+\fBContextItems (Tools):\fR Commands the LLM can execute. Supports synchronous and asynchronous execution (for long-running tasks).
+.IP \[bu]
+\fBResources:\fR Data endpoints the LLM can read (e.g., file contents or command output).
+.P
+Example configuration location: \fI/etc/simple-mcp/simple-mcp.yaml\fR
+.SH FILES
+.TP
+.I /etc/simple-mcp/simple-mcp.yaml
+The default system-wide configuration file.
+.TP
+.I /usr/lib/systemd/system/simple-mcp.service
+The systemd unit file.
+.SH EXAMPLES
+.B Run manually with a local config:
+.P
+.RS 4
+simple-mcp -config ./my-config.yaml
+.RE
+.P
+.B Run on a specific port:
+.P
+.RS 4
+simple-mcp -listen-addr 127.0.0.1:9090
+.RE
+.SH SEE ALSO
+.BR mcphost (1),
+.BR ollama (1)
+.SH AUTHOR
+Vojtech Pavlik <vojtech@suse.com>

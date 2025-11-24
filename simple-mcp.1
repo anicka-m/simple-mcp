@@ -20,7 +20,7 @@ Default: \fI./simple-mcp.yaml\fR (or \fI/etc/simple-mcp/simple-mcp.yaml\fR when 
 .BI \-listen-addr " address"
 The network address and port to listen on for HTTP requests.
 .br
-Default: \fI:8080\fR
+Default: \fI:8080\fR (The systemd service defaults to \fI127.0.0.1:8080\fR).
 .SH CONFIGURATION
 The behavior of the server is defined in \fBsimple-mcp.yaml\fR.
 .P
@@ -31,6 +31,18 @@ This file defines:
 \fBResources:\fR Data endpoints the LLM can read (e.g., file contents or command output).
 .P
 Example configuration location: \fI/etc/simple-mcp/simple-mcp.yaml\fR
+.SH SECURITY
+Since \fBsimple-mcp\fR provides shell access, it is critical to restrict network access.
+
+The provided systemd service binds to \fB127.0.0.1\fR (localhost) by default. This prevents external access.
+
+If you need to access the API remotely, it is highly recommended to use a reverse proxy (such as \fBnginx\fR or \fBcaddy\fR) configured with:
+.IP \[bu] 2
+SSL/TLS encryption (HTTPS)
+.IP \[bu]
+Authentication (Basic Auth, OAuth, or mTLS)
+.P
+Do not expose the raw port 8080 to the public internet.
 .SH USAGE WITH MCPHOST
 This server is compatible with \fBmcphost\fR. An example configuration is provided in \fImcphost.yaml\fR.
 

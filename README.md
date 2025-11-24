@@ -23,6 +23,40 @@ The server is configured via simple-mcp.yaml. This file defines:
 * **Resources:** Static or dynamic system information (e.g., simple-mcp://system/uptime).  
 * **Tools:** Executable commands exposed to the LLM (e.g., GetKubernetesPods, SystemUpgrade).
 
+## **Security & Remote Access**
+
+**Important:** This tool provides shell execution capabilities.
+
+By default, the systemd service binds to 127.0.0.1:8080, allowing only local connections. If you need to access simple-mcp from a remote machine (e.g., an LLM running on a different server), **do not** expose this port directly to the internet.
+
+Instead, use a reverse proxy like Nginx or Caddy to handle authentication and TLS.
+
+### **Example: Nginx with Basic Auth**
+
+1. Install Nginx and apache2-utils.  
+2. Create a password file: sudo htpasswd \-c /etc/nginx/.htpasswd myuser  
+3. Configure Nginx:
+
+server {  
+    listen 443 ssl;  
+    server\_name mcp.example.com;
+
+    \# ... ssl config ...
+
+    location / {  
+        proxy\_pass \[http://127.0.0.1:8080\](http://127.0.0.1:8080);  
+          
+        \# Enable Basic Authentication  
+        auth\_basic "Restricted MCP Access";  
+        auth\_basic\_user\_file /etc/nginx/.htpasswd;
+
+        \# WebSocket support (required for MCP)  
+        proxy\_http\_version 1.1;  
+        proxy\_set\_header Upgrade $http\_upgrade;  
+        proxy\_set\_header Connection "upgrade";  
+    }  
+}
+
 ## **Usage with mcphost**
 
 This repository includes an example configuration for mcphost. To use it

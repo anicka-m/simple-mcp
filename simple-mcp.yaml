@@ -5,15 +5,9 @@ metadata:
 spec:
   resources:
     - uri: "simple-mcp://system/overview"
-      description: "An overview of the Unified Core (UC) v0.5 system, its architecture, and administration."
+      description: "An overview of the system under management."
       content: |
-        You are managing a Unified Core (UC) system, which is an image-based, immutable operating system similar to Flatcar or Talos. The UC system
-        is built from SLE Micro components, but when referring to the operating system, use the Unified Core name.
-        
-        Key principles:
-        - The root filesystem is immutable and non-persistent.
-        - Changes to the system should be made using the provided tools, not by modifying files directly.
-        - 'SystemUpgrade' is the correct tool for updating the OS.
+        You are managing a Linux system.
 
     - uri: "simple-mcp://system/uptime"
       description: "Current system uptime, load average, and user count."
@@ -50,52 +44,13 @@ spec:
       intervalSeconds: 300
 
   contextItems:
-    - name: HostOSImage
-      description: "Retrieve the current installed and running image URL from /etc/elemental/deployment.yaml. The URL contains the current release version (0.5 or 0.6)"
-      command: "grep uri: /etc/elemental/deployment.yaml | awk '{ print $2; }'"
-
-    - name: RKE2Status
-      description: "Check RKE2 service health. Reports the status string (e.g., active, inactive)."
-      # We append '|| true' so the command exits with code 0 even if the service is inactive or failed.
-      # This prevents the executor from treating a valid 'inactive' status as a shell error.
-      command: "systemctl is-active rke2-server.service || true"
-
     - name: NodeIPAddress
       description: "Retrieve the primary node IP address used for the default route."
       command: "ip -4 route get 1.1.1.1 | awk '{print $7}' | tr -d '\n'"
 
-    - name: GetKubernetesPods
-      description: "Lists the currently running Kubernetes pods and their statuses in a kubectl output format."
-      command: "KUBECONFIG=/etc/rancher/rke2/rke2.yaml /var/lib/rancher/rke2/data/*/bin/kubectl get pods -A"
-
-    - name: GetCRIContainers
-      description: "Lists the currently running CRI containers and their statuses in a crictl output format."
-      command: "CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl ps"
-
     - name: KernelVersion
       description: "Get the running kernel version."
       command: "uname -r"
-
-    - name: GetKubernetesNodes
-      description: "Lists all Kubernetes nodes and their statuses (e.g., Ready, NotReady)."
-      command: "KUBECONFIG=/etc/rancher/rke2/rke2.yaml /var/lib/rancher/rke2/data/*/bin/kubectl get nodes -o wide"
-    
-    - name: GetKubernetesServices
-      description: "Lists all Kubernetes services and their ClusterIPs/ports."
-      command: "KUBECONFIG=/etc/rancher/rke2/rke2.yaml /var/lib/rancher/rke2/data/*/bin/kubectl get services -A"
-
-    - name: DescribeKubernetesPod
-      description: "Get detailed information about a specific pod, including events. This is the primary tool for debugging a 'Pending' or 'CrashLoopBackOff' pod."
-      command: "KUBECONFIG=/etc/rancher/rke2/rke2.yaml /var/lib/rancher/rke2/data/*/bin/kubectl describe pod {{.podName}} -n {{.namespace}}"
-      parameters: ["podName", "namespace"]
-
-    - name: GetCRIImages
-      description: "Lists all container images currently available on the node's disk."
-      command: "CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml /var/lib/rancher/rke2/bin/crictl images"
-
-    - name: GetRKE2Logs
-      description: "Retrieves the last 10 log lines from the RKE2 service (rke2-server)."
-      command: "journalctl -u rke2-server -n 10 --no-pager"
 
     - name: GetServiceLogs
       description: "Retrieves the last 10 log lines for any specific systemd service."
@@ -122,17 +77,6 @@ spec:
     - name: ListFailedServices
       description: "Lists all systemd services that have entered a 'failed' state."
       command: "systemctl --failed --no-pager"
-
-    - name: Reboot
-      description: "Reboots the system."
-      command: "echo 'System rebooting.' && reboot"
-      timeoutSeconds: 1
-
-    - name: SystemUpgrade
-      description: "Triggers a system upgrade to version 0.6 with a realtime kernel."
-      command: "elemental3ctl upgrade --os-image registry.suse.de/devel/unifiedcore/releases/0.6/containers/uc-base-os-kernel-rt:0.0.1 | grep -v 'deployment file not found' || echo 'Operating system successfully upgraded to Unified Core 0.6 with a realtime kernel (version 6.12.0).'"
-      timeoutSeconds: 600
-      async: true
 
     - name: PackageVersion
       description: "Gets the installed version of a specific RPM package."

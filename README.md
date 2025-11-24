@@ -29,7 +29,9 @@ This repository includes an example configuration for mcphost. To use it
 
 1. Ensure ollama is running and you have the qwen3-coder:30b (or similar) model pulled.  
 2. Edit mcphost.yaml if you need to change the model name or provider URL.  
-3. Run mcphost: mcphost --config mcphost.yaml
+3. Run mcphost: mcphost \--config mcphost.yaml
+
+**Note:** The mcphost.yaml configuration references systemprompt.txt using a relative path. You must run mcphost from the directory containing systemprompt.txt (or update the yaml to provide the full path), otherwise mcphost will fail to load the system prompt.
 
 ## **License**
 

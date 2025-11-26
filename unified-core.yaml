@@ -4,16 +4,12 @@ metadata:
   name: dynamic-mcp-context
 spec:
   resources:
+    # --- Existing System Context ---
     - uri: "simple-mcp://system/overview"
       description: "An overview of the Unified Core (UC) v0.5 system, its architecture, and administration."
       content: |
         You are managing a Unified Core (UC) system, which is an image-based, immutable operating system similar to Flatcar or Talos. The UC system
         is built from SLE Micro components, but when referring to the operating system, use the Unified Core name.
-        
-        Key principles:
-        - The root filesystem is immutable and non-persistent.
-        - Changes to the system should be made using the provided tools, not by modifying files directly.
-        - 'SystemUpgrade' is the correct tool for updating the OS.
 
     - uri: "simple-mcp://system/uptime"
       description: "Current system uptime, load average, and user count."
@@ -22,7 +18,6 @@ spec:
 
     - uri: "simple-mcp://system/health"
       description: "Basic system health status. Reads CPU, GPU, and other temperatures from /sys."
-      # This command first checks if any thermal_zone devices exist before trying to read them.
       command: |
         if [ -z "$(ls /sys/class/thermal/thermal_zone* 2>/dev/null)" ]; then 
           echo "No thermal sensors detected (VM environment)."; 
@@ -49,15 +44,41 @@ spec:
       command: "ip addr show"
       intervalSeconds: 300
 
+    # --- Elemental 3 Configuration & Documentation ---
+
+    - uri: "simple-mcp://elemental/guide"
+      description: "Guide for building custom OS images using Elemental 3."
+      content: |
+        # Elemental 3 Build Guide
+        
+        To build a custom Linux image using Elemental, follow this workflow:
+        
+        1. **Get Examples**: Read `simple-mcp://elemental/examples` to get valid YAML content for `install.yaml`, `release.yaml`, etc.
+        2. **Validate**: Check `simple-mcp://elemental/schema` to ensure your configuration matches the required structure.
+        3. **Create Config**:
+           - Use `CreateDirectory` to create a working folder (e.g., `my-config`).
+           - Use `CreateFile` to write the example content (adapted as needed) to files inside that folder.
+        4. **Build**:
+           - Call `Elemental3Build` pointing to your config directory.
+           - Specify the output file (e.g., `my-image.raw`).
+           - Only ImageType `raw` is supported.
+
+    - uri: "simple-mcp://elemental/schema"
+      description: "JSON Schema definition for the Elemental 3 configuration directory."
+      contentFile: "elemental-schema.json"
+
+    - uri: "simple-mcp://elemental/examples"
+      description: "Working examples of Elemental 3 configuration files (install.yaml, release.yaml, kubernetes.yaml)."
+      contentFile: "elemental-examples.json"
+
   contextItems:
+    # --- Existing System Tools ---
     - name: HostOSImage
       description: "Retrieve the current installed and running image URL from /etc/elemental/deployment.yaml. The URL contains the current release version (0.5 or 0.6)"
       command: "grep uri: /etc/elemental/deployment.yaml | awk '{ print $2; }'"
 
     - name: RKE2Status
       description: "Check RKE2 service health. Reports the status string (e.g., active, inactive)."
-      # We append '|| true' so the command exits with code 0 even if the service is inactive or failed.
-      # This prevents the executor from treating a valid 'inactive' status as a shell error.
       command: "systemctl is-active rke2-server.service || true"
 
     - name: NodeIPAddress
@@ -128,13 +149,43 @@ spec:
       command: "echo 'System rebooting.' && reboot"
       timeoutSeconds: 1
 
-    - name: SystemUpgrade
-      description: "Triggers a system upgrade to version 0.6 with a realtime kernel."
-      command: "elemental3ctl upgrade --os-image registry.suse.de/devel/unifiedcore/releases/0.6/containers/uc-base-os-kernel-rt:0.0.1 | grep -v 'deployment file not found' || echo 'Operating system successfully upgraded to Unified Core 0.6 with a realtime kernel (version 6.12.0).'"
-      timeoutSeconds: 600
-      async: true
-
     - name: PackageVersion
       description: "Gets the installed version of a specific RPM package."
       command: "rpm -q {{.package}}"
       parameters: ["package"]
+
+    # --- Elemental 3 System Management Tools ---
+
+    - name: ListImageTags
+      description: "Lists available tags for a given repository in registry.suse.de. Example repository: devel/unifiedcore/releases/0.6/containers/uc-base-os-kernel-rt"
+      command: "curl -s https://registry.suse.de/v2/{{.repository}}/tags/list"
+      parameters: ["repository"]
+
+    - name: Elemental3CtlSystemUpgrade
+      description: "Triggers a system upgrade to the specified OCI image. You should usually list available tags first."
+      command: "elemental3ctl upgrade --os-image {{.osImage}} | grep -v 'deployment file not found' || echo 'System upgrade initiated.'"
+      parameters: ["osImage"]
+      timeoutSeconds: 600
+      async: true
+
+    # --- Elemental 3 Build Tools ---
+
+    - name: Elemental3Version
+      description: "Checks the installed version of the Elemental 3 CLI."
+      command: "elemental3 version"
+
+    - name: Elemental3Build
+      description: "Builds a custom OS image. Requires a valid config directory (install.yaml, release.yaml). This is a long-running process."
+      # We include --local to support local container storage if needed, though remote OCI is default.
+      # The command outputs to stdout/stderr, which the async handler captures.
+      command: "elemental3 build --config-dir {{.configDir}} --output {{.outputFile}} --image-type {{.imageType}}"
+      parameters: ["configDir", "outputFile", "imageType"]
+      timeoutSeconds: 1800 # 30 minutes allow time for pulling images and building
+      async: true
+
+    - name: Elemental3BuildInstaller
+      description: "Builds an installation media (ISO or RAW) from an OS image and config. Useful for bootstrap."
+      command: "elemental3ctl build-installer --type {{.mediaType}} --os-image {{.osImage}} --output {{.outputDir}}"
+      parameters: ["mediaType", "osImage", "outputDir"]
+      timeoutSeconds: 1800
+      async: true

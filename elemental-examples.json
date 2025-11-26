@@ -1,0 +1,9 @@
+{
+  "description": "Working examples of Elemental 3 configuration files. Use these as templates.",
+  "files": {
+    "install.yaml": "bootloader: grub\ndiskSize: 15G\n",
+    "release.yaml": "name: \"Unified Core\"\nmanifestURI: \"oci://registry.suse.de/devel/unifiedcore/releases/0.6/product/manifest:latest\"\ncomponents:\n  systemd:\n    - extension: \"clp\"\n  helm:\n    - chart: \"rancher\"\n      valuesFile: \"rancher.yaml\"",
+    "kubernetes.yaml": "helm:\n  charts:\n    - name: \"rancher\"\n      repositoryName: \"rancher-latest\"\n      version: \"2.9.0\"\n      targetNamespace: \"cattle-system\"\n      valuesFile: \"rancher.yaml\"\n  repositories:\n    - name: \"rancher-latest\"\n      url: \"https://releases.rancher.com/server-charts/latest\"\n\nmanifests:\n  - \"https://github.com/rancher/rke2/releases/download/v1.28.10%2Brke2r1/rke2.linux-amd64.tar.gz\"\n\nnetwork:\n  apiHost: \"rancher.example.com\"\n  apiVIP: \"192.168.122.100\"",
+    "butane.yaml": "variant: fcos\nversion: 1.6.0\npasswd:\n  users:\n    - name: user\n      password_hash: \"$y$j9T$ExampleHash...\"\n      ssh_authorized_keys:\n        - \"ssh-rsa AAAAB3Nza...\""
+  }
+}

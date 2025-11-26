@@ -1,10 +1,20 @@
-BINARY_NAME=simple-mcp
+SERVER_BINARY=simple-mcp
+CLIENT_BINARY=simple-mcp-cli
 GO=go
 LDFLAGS=-ldflags="-w -s"
 BUILD_ENV=CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 
-build:
-	$(BUILD_ENV) $(GO) build $(LDFLAGS) -o $(BINARY_NAME) .
+.PHONY: all build clean
+
+all: build
+
+build: $(SERVER_BINARY) $(CLIENT_BINARY)
+
+$(SERVER_BINARY):
+	$(BUILD_ENV) $(GO) build $(LDFLAGS) -o $(SERVER_BINARY) .
+
+$(CLIENT_BINARY):
+	$(BUILD_ENV) $(GO) build $(LDFLAGS) -o $(CLIENT_BINARY) cli/main.go
 
 clean:
-	rm -f $(BINARY_NAME)
+	rm -f $(SERVER_BINARY) $(CLIENT_BINARY)

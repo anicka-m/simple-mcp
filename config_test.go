@@ -75,6 +75,8 @@ metadata:
 	}
 }
 
+// TestLoadConfig_DefaultFile validates the actual simple-mcp.yaml shipped with the repo.
+// This ensures that the default configuration is always valid and parsable.
 func TestLoadConfig_DefaultFile(t *testing.T) {
 	filename := "simple-mcp.yaml"
 	

@@ -62,9 +62,9 @@ func main() {
 	)
 	log.Printf("MCP Server %s with API %s created.", cfg.Metadata.Name, cfg.APIVersion)
 
-	registerBuiltinTools(mcpServer, taskStore, resourceMap)
-	registerConfigTools(mcpServer, cfg, taskStore)
-	registerResources(mcpServer, cfg)
+	registerBuiltinTools(mcpServer, taskStore, resourceMap, *tmpDir)
+	registerConfigTools(mcpServer, cfg, taskStore, *tmpDir)
+	registerResources(mcpServer, cfg, *tmpDir)
 
 	if *tmpDir != "" {
 		registerScratchTools(mcpServer, *tmpDir)
@@ -105,7 +105,7 @@ func checkTmpDir(path string) error {
 
 // registerBuiltinTools adds the core infrastructure tools required for
 // mcphost compatibility and async task management.
-func registerBuiltinTools(mcpServer *server.MCPServer, taskStore *TaskStore, resourceMap map[string]ResourceItem) {
+func registerBuiltinTools(mcpServer *server.MCPServer, taskStore *TaskStore, resourceMap map[string]ResourceItem, tmpDir string) {
 	mcpServer.AddTool(mcp.NewTool(
 		"ping",
 		mcp.WithDescription("Responds with 'pong' to keep the connection alive."),
@@ -200,7 +200,7 @@ func registerBuiltinTools(mcpServer *server.MCPServer, taskStore *TaskStore, res
 
 		if item.Command != "" {
 			cmdItem := ContextItem{Command: item.Command}
-			output, err := executeCommand(cmdItem, nil)
+			output, err := executeCommand(cmdItem, nil, tmpDir)
 			if err != nil {
 				log.Printf("Error executing command for resource %s: %v", resourceURI, err)
 				return mcp.NewToolResultError(fmt.Sprintf("Error executing command for %s: %v", resourceURI, err)), nil
@@ -217,7 +217,7 @@ func registerBuiltinTools(mcpServer *server.MCPServer, taskStore *TaskStore, res
 
 // registerConfigTools iterates through the configuration and registers
 // declared tools, routing them to sync or async handlers.
-func registerConfigTools(mcpServer *server.MCPServer, cfg *Config, taskStore *TaskStore) {
+func registerConfigTools(mcpServer *server.MCPServer, cfg *Config, taskStore *TaskStore, tmpDir string) {
 	for _, item := range cfg.Specification.Items {
 		currentItem := item
 		var toolOptions []mcp.ToolOption
@@ -246,9 +246,9 @@ func registerConfigTools(mcpServer *server.MCPServer, cfg *Config, taskStore *Ta
 			}
 
 			if currentItem.Async {
-				return handleAsyncTask(ctx, currentItem, params, taskStore)
+				return handleAsyncTask(ctx, currentItem, params, taskStore, tmpDir)
 			}
-			return handleSyncTask(ctx, currentItem, params)
+			return handleSyncTask(ctx, currentItem, params, tmpDir)
 		}
 
 		mcpServer.AddTool(tool, handler)
@@ -256,8 +256,8 @@ func registerConfigTools(mcpServer *server.MCPServer, cfg *Config, taskStore *Ta
 	}
 }
 
-func handleSyncTask(ctx context.Context, currentItem ContextItem, params map[string]interface{}) (*mcp.CallToolResult, error) {
-	output, err := executeCommand(currentItem, params)
+func handleSyncTask(ctx context.Context, currentItem ContextItem, params map[string]interface{}, tmpDir string) (*mcp.CallToolResult, error) {
+	output, err := executeCommand(currentItem, params, tmpDir)
 	if err != nil {
 		log.Printf("Error executing command '%s': %v", currentItem.Name, err)
 		// Return stderr output to the LLM to help with diagnosing the failure.
@@ -268,7 +268,7 @@ func handleSyncTask(ctx context.Context, currentItem ContextItem, params map[str
 	return mcp.NewToolResultText(output), nil
 }
 
-func handleAsyncTask(ctx context.Context, currentItem ContextItem, params map[string]interface{}, taskStore *TaskStore) (*mcp.CallToolResult, error) {
+func handleAsyncTask(ctx context.Context, currentItem ContextItem, params map[string]interface{}, taskStore *TaskStore, tmpDir string) (*mcp.CallToolResult, error) {
 	// Enforce concurrency lock: prevent multiple instances of the same long-running task.
 	if taskStore.HasActiveTask(currentItem.Name) {
 		log.Printf("Rejected async task %s: task is already running.", currentItem.Name)
@@ -331,7 +331,7 @@ func handleAsyncTask(ctx context.Context, currentItem ContextItem, params map[st
 		log.Printf("Starting async job %s: %s", jobID, currentItem.Name)
 		taskStore.SetStatus(jobID, "running", "Job is executing...")
 
-		output, err := executeCommand(currentItem, params)
+		output, err := executeCommand(currentItem, params, tmpDir)
 
 		if err != nil {
 			log.Printf("Async job %s finished with status: failed", jobID)
@@ -354,7 +354,7 @@ func handleAsyncTask(ctx context.Context, currentItem ContextItem, params map[st
 
 // registerResources registers the static or dynamic resources defined in the
 // config file. These are separate from the ephemeral task resources.
-func registerResources(mcpServer *server.MCPServer, cfg *Config) {
+func registerResources(mcpServer *server.MCPServer, cfg *Config, tmpDir string) {
 	for _, item := range cfg.Specification.Resources {
 		currentItem := item
 
@@ -380,7 +380,7 @@ func registerResources(mcpServer *server.MCPServer, cfg *Config) {
 			// Then, append command output if a command is defined
 			if currentItem.Command != "" {
 				cmdItem := ContextItem{Command: currentItem.Command}
-				output, err := executeCommand(cmdItem, nil)
+				output, err := executeCommand(cmdItem, nil, tmpDir)
 				if err != nil {
 					log.Printf("Error executing command for resource %s: %v", currentItem.URI, err)
 					// Append error message to content for visibility

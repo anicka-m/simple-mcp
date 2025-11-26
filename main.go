@@ -331,43 +331,38 @@ func registerResources(mcpServer *server.MCPServer, cfg *Config) {
 
 		var handler server.ResourceHandlerFunc
 
-		if currentItem.Command != "" {
-			cmdItem := ContextItem{Command: currentItem.Command}
-			handler = func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
-				log.Printf("Handling dynamic resource read request for: %s", currentItem.URI)
+		// Combined handler for content, contentFile, and command
+		handler = func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+			log.Printf("Handling resource read request for: %s", currentItem.URI)
+			var combinedContent strings.Builder
 
+			// Append static content first
+			if currentItem.Content != "" {
+				combinedContent.WriteString(currentItem.Content)
+			}
+
+			// Then, append command output if a command is defined
+			if currentItem.Command != "" {
+				cmdItem := ContextItem{Command: currentItem.Command}
 				output, err := executeCommand(cmdItem, nil)
 				if err != nil {
 					log.Printf("Error executing command for resource %s: %v", currentItem.URI, err)
-					output = fmt.Sprintf("Error executing command for %s: %v. Output: %s", currentItem.URI, err, output)
+					// Append error message to content for visibility
+					output = fmt.Sprintf("\nError executing command: %v. Output: %s", err, output)
 				}
-
-				contents := []mcp.ResourceContents{
-					mcp.TextResourceContents{
-						URI:      currentItem.URI,
-						MIMEType: "text/plain",
-						Text:     output,
-					},
-				}
-				return contents, nil
+				combinedContent.WriteString(output)
 			}
-			log.Printf("Registered dynamic resource: %s", currentItem.URI)
 
-		} else if currentItem.Content != "" {
-			handler = func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
-				log.Printf("Handling static resource read request for: %s", currentItem.URI)
-
-				contents := []mcp.ResourceContents{
-					mcp.TextResourceContents{
-						URI:      currentItem.URI,
-						MIMEType: "text/plain",
-						Text:     currentItem.Content,
-					},
-				}
-				return contents, nil
+			contents := []mcp.ResourceContents{
+				mcp.TextResourceContents{
+					URI:      currentItem.URI,
+					MIMEType: "text/plain",
+					Text:     combinedContent.String(),
+				},
 			}
-			log.Printf("Registered static resource: %s", currentItem.URI)
+			return contents, nil
 		}
+		log.Printf("Registered resource: %s (dynamic: %v)", currentItem.URI, currentItem.Command != "")
 
 		mcpServer.AddResource(resource, handler)
 	}

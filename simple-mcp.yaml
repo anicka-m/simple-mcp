@@ -5,9 +5,8 @@ metadata:
 spec:
   resources:
     - uri: "simple-mcp://system/overview"
-      description: "An overview of the system under management."
-      content: |
-        You are managing a Linux system.
+      description: "An overview of the system under management, loaded from a file."
+      contentFile: "system_overview.txt"
 
     - uri: "simple-mcp://system/uptime"
       description: "Current system uptime, load average, and user count."

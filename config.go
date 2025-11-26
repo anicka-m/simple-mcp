@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,6 +42,7 @@ type ResourceItem struct {
 	Command         string `yaml:"command,omitempty"`
 	IntervalSeconds int    `yaml:"intervalSeconds,omitempty"`
 	Content         string `yaml:"content,omitempty"`
+	ContentFile     string `yaml:"contentFile,omitempty"`
 }
 
 // Spec defines the schema for the configuration file.
@@ -102,6 +104,25 @@ func LoadConfig(path string) (*Config, error) {
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, formatYamlError(path, data, err)
+	}
+
+	// Get the directory of the config file to resolve relative paths
+	configDir := filepath.Dir(path)
+
+	for i := range config.Specification.Resources {
+		resource := &config.Specification.Resources[i]
+		if resource.ContentFile != "" {
+			contentFilePath := resource.ContentFile
+			if !filepath.IsAbs(contentFilePath) {
+				contentFilePath = filepath.Join(configDir, contentFilePath)
+			}
+			fileContent, err := os.ReadFile(contentFilePath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read content file for resource %s: %w", resource.URI, err)
+			}
+			// Append file content to existing content
+			resource.Content = resource.Content + string(fileContent)
+		}
 	}
 
 	return &config, nil

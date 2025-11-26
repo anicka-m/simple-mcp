@@ -15,7 +15,7 @@ func TestExecuteCommand_Templating(t *testing.T) {
 		"name": "World",
 	}
 
-	output, err := executeCommand(item, params, "")
+	output, _, _, err := executeCommand(item, params, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestExecuteCommand_Timeout(t *testing.T) {
 	}
 
 	start := time.Now()
-	_, err := executeCommand(item, nil, "")
+	_, _, _, err := executeCommand(item, nil, "")
 	duration := time.Since(start)
 
 	if err == nil {
@@ -51,7 +51,7 @@ func TestExecuteCommand_InvalidTemplate(t *testing.T) {
 	item := ContextItem{
 		Command: "echo {{.missing_end_brace",
 	}
-	_, err := executeCommand(item, nil, "")
+	_, _, _, err := executeCommand(item, nil, "")
 	if err == nil {
 		t.Error("expected template parse error, got nil")
 	}
@@ -64,7 +64,7 @@ func TestExecuteCommand_WorkingDirectory(t *testing.T) {
 	}
 
 	// Test with a specific directory
-	output, err := executeCommand(item, nil, "/usr")
+	output, _, _, err := executeCommand(item, nil, "/usr")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestExecuteCommand_WorkingDirectory(t *testing.T) {
 	}
 
 	// Test with the default /tmp directory
-	output, err = executeCommand(item, nil, "")
+	output, _, _, err = executeCommand(item, nil, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

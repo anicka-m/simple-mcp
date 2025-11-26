@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,73 +22,94 @@ import (
 )
 
 // registerScratchTools registers the file and directory manipulation tools.
-func registerScratchTools(mcpServer *server.MCPServer, tmpDir string) {
-	// CreateFile
-	mcpServer.AddTool(mcp.NewTool("CreateFile",
+func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bool) {
+	createFileTool := mcp.NewTool("CreateFile",
 		mcp.WithDescription("Creates a new file in the scratch space."),
 		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file.")),
-		mcp.WithString("content", mcp.Required(), mcp.Description("The content of the file."))),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			path, _ := request.RequireString("path")
-			content, _ := request.RequireString("content")
-			return createFile(tmpDir, path, content)
-		})
+		mcp.WithString("content", mcp.Required(), mcp.Description("The content of the file.")))
+	mcpServer.AddTool(createFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		path, _ := request.RequireString("path")
+		content, _ := request.RequireString("content")
+		if verbose {
+			log.Printf("Handling CreateFile request for path: %s", path)
+		}
+		return createFile(tmpDir, path, content)
+	})
+	log.Printf("Registered built-in scratch tool: %s", createFileTool.Name)
 
-	// ReadFile
-	mcpServer.AddTool(mcp.NewTool("ReadFile",
+	readFileTool := mcp.NewTool("ReadFile",
 		mcp.WithDescription("Reads the content of a file in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file."))),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			path, _ := request.RequireString("path")
-			return readFile(tmpDir, path)
-		})
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file.")))
+	mcpServer.AddTool(readFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		path, _ := request.RequireString("path")
+		if verbose {
+			log.Printf("Handling ReadFile request for path: %s", path)
+		}
+		return readFile(tmpDir, path)
+	})
+	log.Printf("Registered built-in scratch tool: %s", readFileTool.Name)
 
-	// DeleteFile
-	mcpServer.AddTool(mcp.NewTool("DeleteFile",
+	deleteFileTool := mcp.NewTool("DeleteFile",
 		mcp.WithDescription("Deletes a file in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file."))),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			path, _ := request.RequireString("path")
-			return deleteFile(tmpDir, path)
-		})
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file.")))
+	mcpServer.AddTool(deleteFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		path, _ := request.RequireString("path")
+		if verbose {
+			log.Printf("Handling DeleteFile request for path: %s", path)
+		}
+		return deleteFile(tmpDir, path)
+	})
+	log.Printf("Registered built-in scratch tool: %s", deleteFileTool.Name)
 
-	// ModifyFile
-	mcpServer.AddTool(mcp.NewTool("ModifyFile",
+	modifyFileTool := mcp.NewTool("ModifyFile",
 		mcp.WithDescription("Modifies a file in the scratch space using a unified diff."),
 		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file.")),
-		mcp.WithString("patch", mcp.Required(), mcp.Description("The unified diff patch to apply."))),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			path, _ := request.RequireString("path")
-			patch, _ := request.RequireString("patch")
-			return modifyFile(tmpDir, path, patch)
-		})
+		mcp.WithString("patch", mcp.Required(), mcp.Description("The unified diff patch to apply.")))
+	mcpServer.AddTool(modifyFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		path, _ := request.RequireString("path")
+		patch, _ := request.RequireString("patch")
+		if verbose {
+			log.Printf("Handling ModifyFile request for path: %s", path)
+		}
+		return modifyFile(tmpDir, path, patch)
+	})
+	log.Printf("Registered built-in scratch tool: %s", modifyFileTool.Name)
 
-	// ListDirectory
-	mcpServer.AddTool(mcp.NewTool("ListDirectory",
+	listDirectoryTool := mcp.NewTool("ListDirectory",
 		mcp.WithDescription("Lists the contents of a directory in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory."))),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			path, _ := request.RequireString("path")
-			return listDirectory(tmpDir, path)
-		})
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory.")))
+	mcpServer.AddTool(listDirectoryTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		path, _ := request.RequireString("path")
+		if verbose {
+			log.Printf("Handling ListDirectory request for path: %s", path)
+		}
+		return listDirectory(tmpDir, path)
+	})
+	log.Printf("Registered built-in scratch tool: %s", listDirectoryTool.Name)
 
-	// CreateDirectory
-	mcpServer.AddTool(mcp.NewTool("CreateDirectory",
+	createDirectoryTool := mcp.NewTool("CreateDirectory",
 		mcp.WithDescription("Creates a new directory in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory."))),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			path, _ := request.RequireString("path")
-			return createDirectory(tmpDir, path)
-		})
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory.")))
+	mcpServer.AddTool(createDirectoryTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		path, _ := request.RequireString("path")
+		if verbose {
+			log.Printf("Handling CreateDirectory request for path: %s", path)
+		}
+		return createDirectory(tmpDir, path)
+	})
+	log.Printf("Registered built-in scratch tool: %s", createDirectoryTool.Name)
 
-	// RemoveDirectory
-	mcpServer.AddTool(mcp.NewTool("RemoveDirectory",
+	removeDirectoryTool := mcp.NewTool("RemoveDirectory",
 		mcp.WithDescription("Removes an empty directory in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory."))),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			path, _ := request.RequireString("path")
-			return removeDirectory(tmpDir, path)
-		})
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory.")))
+	mcpServer.AddTool(removeDirectoryTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		path, _ := request.RequireString("path")
+		if verbose {
+			log.Printf("Handling RemoveDirectory request for path: %s", path)
+		}
+		return removeDirectory(tmpDir, path)
+	})
+	log.Printf("Registered built-in scratch tool: %s", removeDirectoryTool.Name)
 }
 
 func resolvePath(base, path string) (string, error) {

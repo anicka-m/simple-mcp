@@ -75,8 +75,6 @@ metadata:
 	}
 }
 
-// TestLoadConfig_DefaultFile validates the actual simple-mcp.yaml shipped with the repo.
-// This ensures that the default configuration is always valid and parsable.
 func TestLoadConfig_DefaultFile(t *testing.T) {
 	filename := "simple-mcp.yaml"
 	
@@ -102,5 +100,21 @@ func TestLoadConfig_DefaultFile(t *testing.T) {
 
 	if len(cfg.Specification.Items) == 0 {
 		t.Error("Default config should define at least one tool")
+	}
+
+	// Verify that the contentFile was loaded correctly for the overview resource
+	overviewResourceFound := false
+	for _, resource := range cfg.Specification.Resources {
+		if resource.URI == "simple-mcp://system/overview" {
+			overviewResourceFound = true
+			expectedContent := "This is a detailed overview of the system, loaded from an external file.\n"
+			if resource.Content != expectedContent {
+				t.Errorf("Expected overview resource content to be '%s', got '%s'", expectedContent, resource.Content)
+			}
+			break
+		}
+	}
+	if !overviewResourceFound {
+		t.Error("Did not find the 'simple-mcp://system/overview' resource in the default config")
 	}
 }

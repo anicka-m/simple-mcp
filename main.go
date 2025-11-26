@@ -15,6 +15,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -26,7 +27,15 @@ import (
 func main() {
 	configFile := flag.String("config", "./simple-mcp.yaml", "Path to the YAML configuration file.")
 	listenAddr := flag.String("listen-addr", ":8080", "Address to listen on for HTTP requests.")
+	tmpDir := flag.String("tmpdir", "", "Path to a directory for scratch space.")
 	flag.Parse()
+
+	if *tmpDir != "" {
+		log.Printf("Scratch space enabled at: %s", *tmpDir)
+		if err := checkTmpDir(*tmpDir); err != nil {
+			log.Fatalf("FATAL: Invalid --tmpdir: %v", err)
+		}
+	}
 
 	cfg, err := LoadConfig(*configFile)
 	if err != nil {
@@ -57,6 +66,10 @@ func main() {
 	registerConfigTools(mcpServer, cfg, taskStore)
 	registerResources(mcpServer, cfg)
 
+	if *tmpDir != "" {
+		registerScratchTools(mcpServer, *tmpDir)
+	}
+
 	log.Printf("Creating Streamable HTTP server...")
 	httpOpts := []server.StreamableHTTPOption{}
 	httpServer := server.NewStreamableHTTPServer(mcpServer, httpOpts...)
@@ -66,6 +79,29 @@ func main() {
 		log.Fatalf("FATAL: Could not start HTTP server: %v", err)
 	}
 }
+
+func checkTmpDir(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("path does not exist: %s", path)
+		}
+		return fmt.Errorf("could not stat path: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("path is not a directory: %s", path)
+	}
+
+	// Check for write permissions by creating a temporary file.
+	tmpFile, err := os.CreateTemp(path, "simple-mcp-write-test-")
+	if err != nil {
+		return fmt.Errorf("directory is not writable: %w", err)
+	}
+	os.Remove(tmpFile.Name()) // Clean up the temporary file.
+
+	return nil
+}
+
 
 // registerBuiltinTools adds the core infrastructure tools required for
 // mcphost compatibility and async task management.

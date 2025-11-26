@@ -22,7 +22,7 @@ import (
 
 // executeCommand renders the command template with the provided parameters
 // and executes it in a shell.
-func executeCommand(item ContextItem, params map[string]interface{}) (string, error) {
+func executeCommand(item ContextItem, params map[string]interface{}, workDir string) (string, error) {
 	tmpl, err := template.New("command").Parse(item.Command)
 	if err != nil {
 		return "", fmt.Errorf("invalid command template in config: %w", err)
@@ -44,6 +44,14 @@ func executeCommand(item ContextItem, params map[string]interface{}) (string, er
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", finalCommand)
+
+	// Set the working directory for the command.
+	if workDir != "" {
+		cmd.Dir = workDir
+	} else {
+		cmd.Dir = "/tmp"
+	}
+
 	output, err := cmd.CombinedOutput()
 
 	if ctx.Err() == context.DeadlineExceeded {

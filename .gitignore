@@ -19,6 +19,9 @@ coverage.*
 *.coverprofile
 profile.cov
 
+# Log files
+*.log
+
 # Go workspace file
 go.work
 go.work.sum

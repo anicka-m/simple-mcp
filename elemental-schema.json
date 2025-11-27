@@ -36,6 +36,88 @@
             "required": ["bootloader", "diskSize"]
           }
         },
+	"product-manifest.yaml": {
+	  "required": false,
+	  "description": "Defines the product composition including OS image, systemd extensions, and Helm charts.",
+	  "schema": {
+	    "$schema": "http://json-schema.org/draft-07/schema#",
+	    "type": "object",
+	    "properties": {
+	      "metadata": {
+		"type": "object",
+		"properties": {
+		  "name": { "type": "string" },
+		  "version": { "type": "string" },
+		  "creationDate": { "type": "string" },
+		  "upgradePathsFrom": { "type": "array", "items": { "type": "string" } }
+		},
+		"required": ["name", "version"]
+	      },
+	      "components": {
+		"type": "object",
+		"properties": {
+		  "operatingSystem": {
+		    "type": "object",
+		    "properties": {
+		      "version": { "type": "string" },
+		      "image": { "type": "string" }
+		    },
+		    "required": ["image"]
+		  },
+		  "systemd": {
+		    "type": "object",
+		    "properties": {
+		      "extensions": {
+			"type": "array",
+			"items": {
+			  "type": "object",
+			  "properties": {
+			    "name": { "type": "string" },
+			    "image": { "type": "string" },
+			    "required": { "type": "boolean" }
+			  },
+			  "required": ["name", "image"]
+			}
+		      }
+		    }
+		  },
+		  "helm": {
+		    "type": "object",
+		    "properties": {
+		      "charts": {
+			"type": "array",
+			"items": {
+			  "type": "object",
+			  "properties": {
+			    "name": { "type": "string" },
+			    "chart": { "type": "string" },
+			    "version": { "type": "string" },
+			    "namespace": { "type": "string" },
+			    "repository": { "type": "string" }
+			  },
+			  "required": ["name", "chart", "repository"]
+			}
+		      },
+		      "repositories": {
+			"type": "array",
+			"items": {
+			  "type": "object",
+			  "properties": {
+			    "name": { "type": "string" },
+			    "url": { "type": "string" }
+			  },
+			  "required": ["name", "url"]
+			}
+		      }
+		    }
+		  }
+		},
+		"required": ["operatingSystem"]
+	      }
+	    },
+	    "required": ["metadata", "components"]
+	  }
+	},
         "release.yaml": {
           "required": true,
           "description": "Defines the product release reference and enabled components.",

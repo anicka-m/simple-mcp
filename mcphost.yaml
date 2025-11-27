@@ -5,4 +5,4 @@ system-prompt: "systemprompt.txt"
 mcpServers:
   simple-mcp:
     type: "remote"
-    url: "http://10.99.0.157:8080/mcp"
+    url: "http://127.0.0.1:8080/mcp"

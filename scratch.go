@@ -25,8 +25,8 @@ import (
 func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bool) {
 	createFileTool := mcp.NewTool("CreateFile",
 		mcp.WithDescription("Creates a new file in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file.")),
-		mcp.WithString("content", mcp.Required(), mcp.Description("The content of the file.")))
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file within the scratch space.")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("The content of the file. Do not forget to include a newline character on the last line of a text file.")))
 	mcpServer.AddTool(createFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		path, _ := request.RequireString("path")
 		content, _ := request.RequireString("content")
@@ -39,7 +39,7 @@ func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bo
 
 	readFileTool := mcp.NewTool("ReadFile",
 		mcp.WithDescription("Reads the content of a file in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file.")))
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file within the scratch space.")))
 	mcpServer.AddTool(readFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		path, _ := request.RequireString("path")
 		if verbose {
@@ -51,7 +51,7 @@ func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bo
 
 	deleteFileTool := mcp.NewTool("DeleteFile",
 		mcp.WithDescription("Deletes a file in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file.")))
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file within the scratch space.")))
 	mcpServer.AddTool(deleteFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		path, _ := request.RequireString("path")
 		if verbose {
@@ -63,7 +63,7 @@ func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bo
 
 	modifyFileTool := mcp.NewTool("ModifyFile",
 		mcp.WithDescription("Modifies a file in the scratch space using a unified diff."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file.")),
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file within the scratch space.")),
 		mcp.WithString("patch", mcp.Required(), mcp.Description("The unified diff patch to apply.")))
 	mcpServer.AddTool(modifyFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		path, _ := request.RequireString("path")
@@ -77,7 +77,7 @@ func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bo
 
 	listDirectoryTool := mcp.NewTool("ListDirectory",
 		mcp.WithDescription("Lists the contents of a directory in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory.")))
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory within the scratch space. Absolute paths are not allowed.")))
 	mcpServer.AddTool(listDirectoryTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		path, _ := request.RequireString("path")
 		if verbose {
@@ -89,7 +89,7 @@ func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bo
 
 	createDirectoryTool := mcp.NewTool("CreateDirectory",
 		mcp.WithDescription("Creates a new directory in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory.")))
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory within the scratch space.")))
 	mcpServer.AddTool(createDirectoryTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		path, _ := request.RequireString("path")
 		if verbose {
@@ -101,7 +101,7 @@ func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bo
 
 	removeDirectoryTool := mcp.NewTool("RemoveDirectory",
 		mcp.WithDescription("Removes an empty directory in the scratch space."),
-		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory.")))
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the directory within the scratch space.")))
 	mcpServer.AddTool(removeDirectoryTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		path, _ := request.RequireString("path")
 		if verbose {

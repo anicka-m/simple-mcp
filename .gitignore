@@ -3,6 +3,7 @@
 #
 # Binaries for programs and plugins
 simple-mcp
+simple-mcp-cli
 *.exe
 *.exe~
 *.dll

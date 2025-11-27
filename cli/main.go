@@ -28,7 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	baseURL := fmt.Sprintf("http://%s", *serverAddr)
+	baseURL := fmt.Sprintf("http://%s/mcp", *serverAddr)
 	clt, err := client.NewStreamableHttpClient(baseURL)
 	if err != nil {
 		log.Fatalf("Failed to create WebSocket client: %v", err)

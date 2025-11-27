@@ -3,6 +3,7 @@
 #
 # Binaries for programs and plugins
 simple-mcp
+simple-mcp-cli
 *.exe
 *.exe~
 *.dll
@@ -17,6 +18,9 @@ simple-mcp
 coverage.*
 *.coverprofile
 profile.cov
+
+# Log files
+*.log
 
 # Go workspace file
 go.work

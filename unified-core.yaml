@@ -11,41 +11,7 @@ spec:
         You are managing a Unified Core (UC) system, which is an image-based, immutable operating system similar to Flatcar or Talos. The UC system
         is built from SLE Micro components, but when referring to the operating system, use the Unified Core name.
 
-    - uri: "simple-mcp://system/uptime"
-      description: "Current system uptime, load average, and user count."
-      command: "uptime"
-      intervalSeconds: 30
-
-    - uri: "simple-mcp://system/health"
-      description: "Basic system health status. Reads CPU, GPU, and other temperatures from /sys."
-      command: |
-        if [ -z "$(ls /sys/class/thermal/thermal_zone* 2>/dev/null)" ]; then 
-          echo "No thermal sensors detected (VM environment)."; 
-        else 
-          for zone in /sys/class/thermal/thermal_zone*; do 
-            echo -n "$(cat $zone/type): "; 
-            awk '{printf "%.1f°C\n", $1/1000}' $zone/temp; 
-          done; 
-        fi
-      intervalSeconds: 30
-
-    - uri: "simple-mcp://system/memory"
-      description: "System memory usage in megabytes."
-      command: "free -m"
-      intervalSeconds: 60
-
-    - uri: "simple-mcp://system/disk"
-      description: "Disk usage for the root filesystem."
-      command: "df -h /"
-      intervalSeconds: 300
-    
-    - uri: "simple-mcp://system/network-interfaces"
-      description: "Lists all network interfaces and their IP addresses."
-      command: "ip addr show"
-      intervalSeconds: 300
-
     # --- Elemental 3 Configuration & Documentation ---
-
     - uri: "simple-mcp://elemental/guide"
       description: "Guide for building custom OS images using Elemental 3."
       content: |
@@ -53,7 +19,7 @@ spec:
         
         To build a custom Linux image using Elemental, follow this workflow:
         
-        1. **Get Examples**: Read `simple-mcp://elemental/examples` to get valid YAML content for `install.yaml`, `release.yaml`, etc.
+        1. **Get Examples**: Read `simple-mcp://elemental/examples` to get valid YAML content for required files.
         2. **Validate**: Check `simple-mcp://elemental/schema` to ensure your configuration matches the required structure.
         3. **Create Config**:
            - Use `CreateDirectory` to create a working folder (e.g., `my-config`).
@@ -72,7 +38,26 @@ spec:
       contentFile: "elemental-examples.json"
 
   contextItems:
-    # --- Existing System Tools ---
+    - name: Uptime
+      description: "Current system uptime, load average, and user count."
+      command: "uptime"
+
+    - name: MemoryUsage
+      description: "System memory usage."
+      command: "free -h"
+
+    - name: DiskUsage
+      description: "Disk usage for the root filesystem."
+      command: "df -h /"
+    
+    - name: NetworkInterfaces
+      description: "Lists all network interfaces and their IP addresses."
+      command: "ip addr show"
+
+    - name: Temperatures
+      description: "Reads ACPI and CPU temperatures from /sys."
+      command: "if [ -z \"$(ls /sys/class/thermal/thermal_zone* 2>/dev/null)\" ]; then echo \"No thermal sensors detected (VM environment).\"; else for zone in /sys/class/thermal/thermal_zone*; do echo -n \"$(cat $zone/type): \"; awk '{printf \"%.1f°C\n\", $1/1000}' $zone/temp; done; fi"
+
     - name: HostOSImage
       description: "Retrieve the current installed and running image URL from /etc/elemental/deployment.yaml. The URL contains the current release version (0.5 or 0.6)"
       command: "grep uri: /etc/elemental/deployment.yaml | awk '{ print $2; }'"
@@ -100,7 +85,7 @@ spec:
     - name: GetKubernetesNodes
       description: "Lists all Kubernetes nodes and their statuses (e.g., Ready, NotReady)."
       command: "KUBECONFIG=/etc/rancher/rke2/rke2.yaml /var/lib/rancher/rke2/data/*/bin/kubectl get nodes -o wide"
-    
+
     - name: GetKubernetesServices
       description: "Lists all Kubernetes services and their ClusterIPs/ports."
       command: "KUBECONFIG=/etc/rancher/rke2/rke2.yaml /var/lib/rancher/rke2/data/*/bin/kubectl get services -A"
@@ -154,10 +139,8 @@ spec:
       command: "rpm -q {{.package}}"
       parameters: ["package"]
 
-    # --- Elemental 3 System Management Tools ---
-
-    - name: ListImageTags
-      description: "Lists available tags for a given repository in registry.suse.de. Example repository: devel/unifiedcore/releases/0.6/containers/uc-base-os-kernel-rt"
+    - name: ListSystemImages
+      description: "Lists available tags for a given repository in registry.suse.de. Example repository: devel/unifiedcore/releases/0.6/containers/uc-base-os-kernel-rt or devel/unifiedcore/releases/0.6/containers/uc-base-os-kernel-default"
       command: "curl -s https://registry.suse.de/v2/{{.repository}}/tags/list"
       parameters: ["repository"]
 
@@ -168,14 +151,12 @@ spec:
       timeoutSeconds: 600
       async: true
 
-    # --- Elemental 3 Build Tools ---
-
     - name: Elemental3Version
       description: "Checks the installed version of the Elemental 3 CLI."
       command: "elemental3 version"
 
     - name: Elemental3Build
-      description: "Builds a custom OS image. Requires a valid config directory (install.yaml, release.yaml). This is a long-running process."
+      description: "Builds a custom OS image. Requires a valid config directory. Check the simple-mcp://elemental/guide resource before using. This is a long-running process."
       # We include --local to support local container storage if needed, though remote OCI is default.
       # The command outputs to stdout/stderr, which the async handler captures.
       command: "elemental3 build --config-dir {{.configDir}} --output {{.outputFile}} --image-type {{.imageType}}"
@@ -184,7 +165,7 @@ spec:
       async: true
 
     - name: Elemental3BuildInstaller
-      description: "Builds an installation media (ISO or RAW) from an OS image and config. Useful for bootstrap."
+      description: "Builds an installation media (ISO or RAW) from an OS image and config."
       command: "elemental3ctl build-installer --type {{.mediaType}} --os-image {{.osImage}} --output {{.outputDir}}"
       parameters: ["mediaType", "osImage", "outputDir"]
       timeoutSeconds: 1800

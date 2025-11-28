@@ -39,6 +39,59 @@ func TestScratchLogic(t *testing.T) {
 		assert.Equal(t, "hello world\n", string(content))
 	})
 
+	t.Run("CreateFile_WithSubdir", func(t *testing.T) {
+		res, err := createFile(tmpDir, "subdir/test-file.txt", "hello subdir\n")
+		require.NoError(t, err)
+		assert.Equal(t, "File created successfully.", res.Content[0].(mcp.TextContent).Text)
+		content, err := os.ReadFile(filepath.Join(tmpDir, "subdir/test-file.txt"))
+		assert.NoError(t, err)
+		assert.Equal(t, "hello subdir\n", string(content))
+	})
+
+	t.Run("CopyResourceToFile", func(t *testing.T) {
+		resourceMap := map[string]ResourceItem{
+			"simple-mcp://content": {
+				URI:     "simple-mcp://content",
+				Content: "resource content",
+			},
+			"simple-mcp://command": {
+				URI:     "simple-mcp://command",
+				Command: "echo command content",
+			},
+		}
+
+		res, err := copyResourceToFile(resourceMap, tmpDir, false, "simple-mcp://content", "resource-file.txt")
+		require.NoError(t, err)
+		assert.Equal(t, "File created successfully.", res.Content[0].(mcp.TextContent).Text)
+		content, err := os.ReadFile(filepath.Join(tmpDir, "resource-file.txt"))
+		assert.NoError(t, err)
+		assert.Equal(t, "resource content", string(content))
+
+		res, err = copyResourceToFile(resourceMap, tmpDir, false, "simple-mcp://command", "command-file.txt")
+		require.NoError(t, err)
+		assert.Equal(t, "File created successfully.", res.Content[0].(mcp.TextContent).Text)
+		content, err = os.ReadFile(filepath.Join(tmpDir, "command-file.txt"))
+		assert.NoError(t, err)
+		assert.Equal(t, "command content\n", string(content))
+	})
+
+	t.Run("CopyResourceToFile_Combined", func(t *testing.T) {
+		resourceMap := map[string]ResourceItem{
+			"simple-mcp://combined": {
+				URI:     "simple-mcp://combined",
+				Content: "static content\n",
+				Command: "echo dynamic content",
+			},
+		}
+
+		res, err := copyResourceToFile(resourceMap, tmpDir, false, "simple-mcp://combined", "combined-file.txt")
+		require.NoError(t, err)
+		assert.Equal(t, "File created successfully.", res.Content[0].(mcp.TextContent).Text)
+		content, err := os.ReadFile(filepath.Join(tmpDir, "combined-file.txt"))
+		assert.NoError(t, err)
+		assert.Equal(t, "static content\ndynamic content\n", string(content))
+	})
+
 	t.Run("ReadFile", func(t *testing.T) {
 		_, err := createFile(tmpDir, "test-file-for-read.txt", "hello read\n")
 		require.NoError(t, err)

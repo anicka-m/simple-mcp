@@ -22,7 +22,7 @@ import (
 )
 
 // registerScratchTools registers the file and directory manipulation tools.
-func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bool) {
+func registerScratchTools(mcpServer *server.MCPServer, resourceMap map[string]ResourceItem, tmpDir string, verbose bool) {
 	createFileTool := mcp.NewTool("CreateFile",
 		mcp.WithDescription("Creates a new file in the scratch space."),
 		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file within the scratch space.")),
@@ -110,6 +110,38 @@ func registerScratchTools(mcpServer *server.MCPServer, tmpDir string, verbose bo
 		return removeDirectory(tmpDir, path)
 	})
 	log.Printf("Registered built-in scratch tool: %s", removeDirectoryTool.Name)
+
+	copyResourceToFileTool := mcp.NewTool("CopyResourceToFile",
+		mcp.WithDescription("Copies the content of a resource to a file in the scratch space."),
+		mcp.WithString("resourceURI", mcp.Required(), mcp.Description("The URI of the resource to copy.")),
+		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the destination file within the scratch space.")))
+	mcpServer.AddTool(copyResourceToFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		resourceURI, _ := request.RequireString("resourceURI")
+		path, _ := request.RequireString("path")
+		if verbose {
+			log.Printf("Handling CopyResourceToFile request for resourceURI: %s, path: %s", resourceURI, path)
+		}
+		return copyResourceToFile(resourceMap, tmpDir, verbose, resourceURI, path)
+	})
+	log.Printf("Registered built-in scratch tool: %s", copyResourceToFileTool.Name)
+}
+
+func copyResourceToFile(resourceMap map[string]ResourceItem, tmpDir string, verbose bool, resourceURI, path string) (*mcp.CallToolResult, error) {
+	item, ok := resourceMap[resourceURI]
+	if !ok {
+		return mcp.NewToolResultError(fmt.Sprintf("resource not found: %s", resourceURI)), nil
+	}
+
+	content, err := getResourceContent(item, tmpDir, verbose)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get resource content for %s: %v", resourceURI, err)), nil
+	}
+
+	if content == "" {
+		return mcp.NewToolResultError(fmt.Sprintf("resource %s has no content or command", resourceURI)), nil
+	}
+
+	return createFile(tmpDir, path, content)
 }
 
 func resolvePath(base, path string) (string, error) {
@@ -131,6 +163,10 @@ func createFile(tmpDir, path, content string) (*mcp.CallToolResult, error) {
 	fullPath, err := resolvePath(tmpDir, path)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
+	}
+	dir := filepath.Dir(fullPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to create parent directories: %v", err)), nil
 	}
 	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to create file: %v", err)), nil

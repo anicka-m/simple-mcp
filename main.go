@@ -75,7 +75,7 @@ func main() {
 	registerResources(mcpServer, cfg, *tmpDir, *verbose)
 
 	if *tmpDir != "" {
-		registerScratchTools(mcpServer, *tmpDir, *verbose)
+		registerScratchTools(mcpServer, resourceMap, *tmpDir, *verbose)
 	}
 
 	log.Printf("Creating Streamable HTTP server...")
@@ -221,22 +221,46 @@ func registerBuiltinTools(mcpServer *server.MCPServer, taskStore *TaskStore, res
 			return mcp.NewToolResultError(fmt.Sprintf("Resource not found: %s. Call ListResources to see available URIs.", resourceURI)), nil
 		}
 
-		if item.Command != "" {
-			cmdItem := ContextItem{Command: item.Command}
-			output, exitCode, duration, err := executeCommand(cmdItem, nil, tmpDir)
-			if err != nil {
-				log.Printf("ERROR: Error executing command for resource %s (Exit Code: %d): %v", resourceURI, exitCode, err)
-				return mcp.NewToolResultError(fmt.Sprintf("Error executing command for %s: %v", resourceURI, err)), nil
-			}
-			log.Printf("Successfully executed command for resource %s, output: %d bytes, %d lines, exit code: %d, duration: %s", resourceURI, len(output), countLines(output), exitCode, duration)
-			return mcp.NewToolResultText(output), nil
-		} else if item.Content != "" {
-			return mcp.NewToolResultText(item.Content), nil
+		content, err := getResourceContent(item, tmpDir, verbose)
+		if err != nil {
+			// getResourceContent should not return errors, but we handle it just in case.
+			log.Printf("ERROR: Unexpected error getting resource content for %s: %v", resourceURI, err)
+			return mcp.NewToolResultError(fmt.Sprintf("Unexpected error getting resource content for %s: %v", resourceURI, err)), nil
 		}
 
-		return mcp.NewToolResultError(fmt.Sprintf("Resource %s is invalid (no content or command).", resourceURI)), nil
+		return mcp.NewToolResultText(content), nil
 	})
 	log.Printf("Registered built-in tool: %s", getResourceTool.Name)
+}
+
+// getResourceContent generates the content for a given resource, handling static content,
+// dynamic command execution, and the combination of both.
+func getResourceContent(item ResourceItem, tmpDir string, verbose bool) (string, error) {
+	var combinedContent strings.Builder
+
+	// Append static content first
+	if item.Content != "" {
+		combinedContent.WriteString(item.Content)
+	}
+
+	// Then, append command output if a command is defined
+	if item.Command != "" {
+		cmdItem := ContextItem{Command: item.Command}
+		output, exitCode, duration, err := executeCommand(cmdItem, nil, tmpDir)
+
+		if err != nil {
+			log.Printf("ERROR: Error executing command for resource %s (Exit Code: %d): %v", item.URI, exitCode, err)
+			// Append error to content for visibility to the LLM
+			output = fmt.Sprintf("\nError executing command: %v. Output: %s", err, output)
+		} else {
+			if verbose {
+				log.Printf("Successfully executed command for resource %s, output: %d bytes, %d lines, exit code: %d, duration: %s", item.URI, len(output), countLines(output), exitCode, duration)
+			}
+		}
+		combinedContent.WriteString(output)
+	}
+
+	return combinedContent.String(), nil
 }
 
 // registerConfigTools iterates through the configuration and registers
@@ -408,32 +432,20 @@ func registerResources(mcpServer *server.MCPServer, cfg *Config, tmpDir string, 
 			if verbose {
 				log.Printf("Handling resource read request for: %s", currentItem.URI)
 			}
-			var combinedContent strings.Builder
 
-			// Append static content first
-			if currentItem.Content != "" {
-				combinedContent.WriteString(currentItem.Content)
-			}
-
-			// Then, append command output if a command is defined
-			if currentItem.Command != "" {
-				cmdItem := ContextItem{Command: currentItem.Command}
-				output, exitCode, duration, err := executeCommand(cmdItem, nil, tmpDir)
-
-				if err != nil {
-					log.Printf("ERROR: Error executing command for resource %s (Exit Code: %d): %v", currentItem.URI, exitCode, err)
-					output = fmt.Sprintf("\nError executing command: %v. Output: %s", err, output)
-				} else {
-					log.Printf("Successfully executed command for resource %s, output: %d bytes, %d lines, exit code: %d, duration: %s", currentItem.URI, len(output), countLines(output), exitCode, duration)
-				}
-				combinedContent.WriteString(output)
+			content, err := getResourceContent(currentItem, tmpDir, verbose)
+			if err != nil {
+				// This path should not be reached given the current implementation of getResourceContent,
+				// but is included for robustness.
+				log.Printf("ERROR: Unexpected error getting resource content for %s: %v", currentItem.URI, err)
+				content = fmt.Sprintf("Unexpected error getting resource content for %s: %v", currentItem.URI, err)
 			}
 
 			contents := []mcp.ResourceContents{
 				mcp.TextResourceContents{
 					URI:      currentItem.URI,
 					MIMEType: "text/plain",
-					Text:     combinedContent.String(),
+					Text:     content,
 				},
 			}
 			return contents, nil

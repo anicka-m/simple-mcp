@@ -15,7 +15,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strings"
 	"text/template"
 	"time"
 )
@@ -74,8 +73,8 @@ func executeCommand(item ContextItem, params map[string]interface{}, workDir str
 
 	if err != nil {
 		// Return the output (likely stderr) along with the error to aid debugging.
-		return strings.TrimSpace(string(output)), exitCode, duration, fmt.Errorf("command failed: %w", err)
+		return string(output), exitCode, duration, fmt.Errorf("command failed: %w", err)
 	}
 
-	return strings.TrimSpace(string(output)), exitCode, duration, nil
+	return string(output), exitCode, duration, nil
 }

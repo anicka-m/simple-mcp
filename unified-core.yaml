@@ -227,7 +227,7 @@ spec:
       command: "elemental3 version"
 
     - name: Elemental3Build
-      description: "Builds a custom OS image. Requires a valid config directory. Check the elemental://guide resource before using. This is a long-running process."
+      description: "Builds a custom OS image. Requires a valid config directory. Check the elemental://guide resource before using. This is a long-running process, so it's better to continue chatting with the user and check the progress on each interaction."
       # We include --local to support local container storage if needed, though remote OCI is default.
       # The command outputs to stdout/stderr, which the async handler captures.
       command: "elemental3 build --config-dir {{.configDir}} --output {{.outputFile}} --image-type {{.imageType}}"

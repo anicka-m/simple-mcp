@@ -27,6 +27,7 @@
       to the conversation.
 
       --- FIRST STEPS ---
-      Before you start manahing the system, be sure to use the ListResources tool to get yourself acquainted
-      with the available resources and check out the simple-mcp://system/overview resource to understand
-      the system you're managing.
+      Before you start managing the system, be sure examine available resources tool to get yourself acquainted
+      with the available resources and specifically check out the unified-core://system/overview resource to understand
+      the system you're managing. You can only access the system through the MCP tools available and while some of the
+      tools offer file access, this is limited to a scratch space for creating temporary and configuration files.

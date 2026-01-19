@@ -189,6 +189,151 @@ func TestLoadConfig_DefaultFile(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_Options(t *testing.T) {
+	content := `
+apiVersion: v1
+kind: DynamicContextSource
+metadata:
+  name: test-mcp
+spec:
+  listenAddr: ":9090"
+  tmpDir: "/tmp/custom"
+  verbose: true
+  tools:
+    - name: TestTool
+      command: echo test
+`
+	tmpfile, err := os.CreateTemp("", "config-options-*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	if _, err := tmpfile.Write([]byte(content)); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(tmpfile.Name())
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	if cfg.Specification.ListenAddr != ":9090" {
+		t.Errorf("expected listenAddr :9090, got %s", cfg.Specification.ListenAddr)
+	}
+	if cfg.Specification.TmpDir != "/tmp/custom" {
+		t.Errorf("expected tmpDir /tmp/custom, got %s", cfg.Specification.TmpDir)
+	}
+	if cfg.Specification.Verbose == nil || *cfg.Specification.Verbose != true {
+		t.Errorf("expected verbose true, got %v", cfg.Specification.Verbose)
+	}
+}
+
+func TestResolveOptions(t *testing.T) {
+	vTrue := true
+
+	tests := []struct {
+		name            string
+		cfg             *Config
+		cliListenAddr   string
+		cliTmpDir       string
+		cliVerbose      bool
+		setFlags        map[string]bool
+		expectedAddr    string
+		expectedTmp     string
+		expectedVerbose bool
+	}{
+		{
+			name: "Defaults only",
+			cfg: &Config{
+				Specification: Spec{},
+			},
+			cliListenAddr:   ":8080",
+			cliTmpDir:       "",
+			cliVerbose:      false,
+			setFlags:        map[string]bool{},
+			expectedAddr:    ":8080",
+			expectedTmp:     "",
+			expectedVerbose: false,
+		},
+		{
+			name: "Config overrides defaults",
+			cfg: &Config{
+				Specification: Spec{
+					ListenAddr: ":9090",
+					TmpDir:     "/tmp/cfg",
+					Verbose:    &vTrue,
+				},
+			},
+			cliListenAddr:   ":8080",
+			cliTmpDir:       "",
+			cliVerbose:      false,
+			setFlags:        map[string]bool{},
+			expectedAddr:    ":9090",
+			expectedTmp:     "/tmp/cfg",
+			expectedVerbose: true,
+		},
+		{
+			name: "CLI overrides config",
+			cfg: &Config{
+				Specification: Spec{
+					ListenAddr: ":9090",
+					TmpDir:     "/tmp/cfg",
+					Verbose:    &vTrue,
+				},
+			},
+			cliListenAddr: ":7070",
+			cliTmpDir:     "/tmp/cli",
+			cliVerbose:    false,
+			setFlags: map[string]bool{
+				"listen-addr": true,
+				"tmpdir":      true,
+				"verbose":     true,
+			},
+			expectedAddr:    ":7070",
+			expectedTmp:     "/tmp/cli",
+			expectedVerbose: false,
+		},
+		{
+			name: "Mixed override",
+			cfg: &Config{
+				Specification: Spec{
+					ListenAddr: ":9090",
+					TmpDir:     "/tmp/cfg",
+					Verbose:    &vTrue,
+				},
+			},
+			cliListenAddr: ":7070",
+			cliTmpDir:     "",
+			cliVerbose:    false,
+			setFlags: map[string]bool{
+				"listen-addr": true,
+			},
+			expectedAddr:    ":7070",
+			expectedTmp:     "/tmp/cfg",
+			expectedVerbose: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addr, tmp, verb := resolveOptions(tt.cfg, tt.cliListenAddr, tt.cliTmpDir, tt.cliVerbose, tt.setFlags)
+			if addr != tt.expectedAddr {
+				t.Errorf("expected addr %s, got %s", tt.expectedAddr, addr)
+			}
+			if tmp != tt.expectedTmp {
+				t.Errorf("expected tmp %s, got %s", tt.expectedTmp, tmp)
+			}
+			if verb != tt.expectedVerbose {
+				t.Errorf("expected verbose %v, got %v", tt.expectedVerbose, verb)
+			}
+		})
+	}
+}
+
 func TestLoadConfig_UnifiedCore(t *testing.T) {
 	filename := "unified-core.yaml"
 

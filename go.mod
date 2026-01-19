@@ -6,7 +6,7 @@ go 1.23.0
 require (
 	github.com/bluekeyes/go-gitdiff v0.8.1
 	github.com/google/uuid v1.6.0
-	github.com/mark3labs/mcp-go v0.43.0
+	github.com/mark3labs/mcp-go v0.43.2
 	github.com/stretchr/testify v1.9.0
 	gopkg.in/yaml.v3 v3.0.1
 )

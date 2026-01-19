@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -259,6 +261,60 @@ func registerBuiltinTools(mcpServer *server.MCPServer, taskStore *TaskStore, res
 		return mcp.NewToolResultText(content), nil
 	})
 	log.Printf("Registered built-in tool: %s", getResourceTool.Name)
+
+	// Allows searching through resource definitions.
+	searchResourcesTool := mcp.NewTool(
+		"SearchResources",
+		mcp.WithDescription("Searches for resources by URI, description, or static content using a regular expression."),
+		mcp.WithString(
+			"query",
+			mcp.Required(),
+			mcp.Description("The regular expression to search for."),
+		),
+	)
+	mcpServer.AddTool(searchResourcesTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		query, _ := request.RequireString("query")
+		if verbose {
+			log.Printf("Handling SearchResources request with query: %s", query)
+		}
+
+		result, err := searchResources(resourceMap, query)
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(result), nil
+	})
+	log.Printf("Registered built-in tool: %s", searchResourcesTool.Name)
+}
+
+// searchResources filters the resourceMap based on a regular expression query
+// matching against URI, description, or static content.
+func searchResources(resourceMap map[string]ResourceItem, query string) (string, error) {
+	re, err := regexp.Compile(query)
+	if err != nil {
+		return "", fmt.Errorf("invalid regular expression: %v", err)
+	}
+
+	var matched []string
+	for uri, item := range resourceMap {
+		if re.MatchString(uri) || re.MatchString(item.Description) || re.MatchString(item.Content) {
+			matched = append(matched, uri)
+		}
+	}
+	sort.Strings(matched)
+
+	if len(matched) == 0 {
+		return "No resources matched the search query.", nil
+	}
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Found %d matching resources:\n\n", len(matched)))
+	for _, uri := range matched {
+		item := resourceMap[uri]
+		b.WriteString(fmt.Sprintf("URI: %s\nDescription: %s\n\n", uri, item.Description))
+	}
+	return b.String(), nil
 }
 
 // getResourceContent generates the content for a given resource, handling static content,

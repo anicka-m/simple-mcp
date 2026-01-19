@@ -43,6 +43,7 @@ type ResourceItem struct {
 	IntervalSeconds int    `yaml:"intervalSeconds,omitempty"`
 	Content         string `yaml:"content,omitempty"`
 	ContentFile     string `yaml:"contentFile,omitempty"`
+	Directory       string `yaml:"directory,omitempty"`
 }
 
 // Spec defines the schema for the configuration file.
@@ -123,21 +124,61 @@ func LoadConfig(path string) (*Config, error) {
 	// Get the directory of the config file to resolve relative paths
 	configDir := filepath.Dir(path)
 
-	for i := range config.Specification.Resources {
-		resource := &config.Specification.Resources[i]
-		if resource.ContentFile != "" {
-			contentFilePath := resource.ContentFile
-			if !filepath.IsAbs(contentFilePath) {
-				contentFilePath = filepath.Join(configDir, contentFilePath)
+	var expandedResources []ResourceItem
+	for _, resource := range config.Specification.Resources {
+		if resource.Directory != "" {
+			dirPath := resource.Directory
+			if !filepath.IsAbs(dirPath) {
+				dirPath = filepath.Join(configDir, dirPath)
 			}
-			fileContent, err := os.ReadFile(contentFilePath)
+			err := filepath.WalkDir(dirPath, func(path string, d os.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if d.IsDir() {
+					return nil
+				}
+				relPath, err := filepath.Rel(dirPath, path)
+				if err != nil {
+					return err
+				}
+				fileContent, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+				newURI := resource.URI
+				if !strings.HasSuffix(newURI, "/") {
+					newURI += "/"
+				}
+				newURI += strings.ReplaceAll(relPath, "\\", "/")
+
+				newResource := resource
+				newResource.URI = newURI
+				newResource.Content = string(fileContent)
+				newResource.Directory = "" // Clear the directory field to avoid re-expansion
+				expandedResources = append(expandedResources, newResource)
+				return nil
+			})
 			if err != nil {
-				return nil, fmt.Errorf("failed to read content file for resource %s: %w", resource.URI, err)
+				return nil, fmt.Errorf("failed to walk directory for resource %s: %w", resource.URI, err)
 			}
-			// Append file content to existing content
-			resource.Content = resource.Content + string(fileContent)
+		} else {
+			if resource.ContentFile != "" {
+				contentFilePath := resource.ContentFile
+				if !filepath.IsAbs(contentFilePath) {
+					contentFilePath = filepath.Join(configDir, contentFilePath)
+				}
+				fileContent, err := os.ReadFile(contentFilePath)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read content file for resource %s: %w", resource.URI, err)
+				}
+				// Append file content to existing content
+				resource.Content = resource.Content + string(fileContent)
+			}
+			expandedResources = append(expandedResources, resource)
 		}
 	}
+	config.Specification.Resources = expandedResources
 
 	return &config, nil
 }

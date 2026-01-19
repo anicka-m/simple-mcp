@@ -20,7 +20,12 @@ This will produce the simple-mcp binary in the current directory.
 
 The server is configured via simple-mcp.yaml. This file defines:
 
-* **Resources:** Static or dynamic system information (e.g., simple-mcp://system/uptime).  
+* **Resources:** Static or dynamic system information (e.g., simple-mcp://system/uptime).
+  * Resources can be defined with:
+    * `content`: Static text content.
+    * `contentFile`: Path to a file whose content will be loaded (relative to the config file).
+    * `directory`: Path to a directory whose entire subtree of files will be added as individual resources. The file's relative path will be appended to the resource URI.
+    * `command`: A shell command to execute to generate dynamic content.
 * **Tools:** Executable commands exposed to the LLM (e.g., GetKubernetesPods, SystemUpgrade).
 
 ## **Security & Remote Access**

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -348,5 +350,131 @@ func TestLoadConfig_UnifiedCore(t *testing.T) {
 
 	if len(cfg.Specification.Tools) == 0 {
 		t.Errorf("%s should define at least one tool", filename)
+	}
+}
+
+func TestLoadConfig_DirectoryResource(t *testing.T) {
+	// Create a temporary directory for the resource files
+	resDir, err := os.MkdirTemp("", "res-dir-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(resDir)
+
+	// Create some files in the directory
+	file1Path := filepath.Join(resDir, "file1.txt")
+	if err := os.WriteFile(file1Path, []byte("content1"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	subDir := filepath.Join(resDir, "subdir")
+	if err := os.Mkdir(subDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	file2Path := filepath.Join(subDir, "file2.txt")
+	if err := os.WriteFile(file2Path, []byte("content2"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a temporary config file referencing the directory
+	content := fmt.Sprintf(`
+apiVersion: v1
+kind: DynamicContextSource
+metadata:
+  name: test-mcp
+spec:
+  resources:
+    - uri: "simple-mcp://docs"
+      description: "Test Docs"
+      directory: "%s"
+`, resDir)
+	tmpfile, err := os.CreateTemp("", "config-dir-*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	if _, err := tmpfile.Write([]byte(content)); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(tmpfile.Name())
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	if len(cfg.Specification.Resources) != 2 {
+		t.Errorf("expected 2 resources, got %d", len(cfg.Specification.Resources))
+	}
+
+	resourceMap := make(map[string]ResourceItem)
+	for _, res := range cfg.Specification.Resources {
+		resourceMap[res.URI] = res
+	}
+
+	if res, ok := resourceMap["simple-mcp://docs/file1.txt"]; !ok {
+		t.Errorf("expected resource simple-mcp://docs/file1.txt not found")
+	} else if res.Content != "content1" {
+		t.Errorf("expected content1, got %s", res.Content)
+	}
+
+	if res, ok := resourceMap["simple-mcp://docs/subdir/file2.txt"]; !ok {
+		t.Errorf("expected resource simple-mcp://docs/subdir/file2.txt not found")
+	} else if res.Content != "content2" {
+		t.Errorf("expected content2, got %s", res.Content)
+	}
+}
+
+func TestLoadConfig_DirectoryResourceRelative(t *testing.T) {
+	// Create a temporary directory for the config and resources
+	baseDir, err := os.MkdirTemp("", "base-dir-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(baseDir)
+
+	resSubDir := filepath.Join(baseDir, "docs")
+	if err := os.Mkdir(resSubDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(resSubDir, "info.txt"), []byte("info content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	configPath := filepath.Join(baseDir, "config.yaml")
+	content := `
+apiVersion: v1
+kind: DynamicContextSource
+metadata:
+  name: test-mcp
+spec:
+  resources:
+    - uri: "simple-mcp://docs"
+      description: "Test Docs"
+      directory: "docs"
+`
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	found := false
+	for _, res := range cfg.Specification.Resources {
+		if res.URI == "simple-mcp://docs/info.txt" {
+			found = true
+			if res.Content != "info content" {
+				t.Errorf("expected 'info content', got '%s'", res.Content)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Error("relative directory resource not found")
 	}
 }

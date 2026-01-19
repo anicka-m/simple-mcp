@@ -96,7 +96,7 @@ spec:
       description: "Working example of release.yaml"
       contentFile: "elemental-example/release.yaml"
 
-  contextItems:
+  tools:
     - name: Uptime
       description: "Current system uptime, load average, and user count."
       command: "uptime"

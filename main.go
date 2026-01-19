@@ -266,7 +266,7 @@ func getResourceContent(item ResourceItem, tmpDir string, verbose bool) (string,
 // registerConfigTools iterates through the configuration and registers
 // declared tools, routing them to sync or async handlers.
 func registerConfigTools(mcpServer *server.MCPServer, cfg *Config, taskStore *TaskStore, tmpDir string, verbose bool) {
-	for _, item := range cfg.Specification.Items {
+	for _, item := range cfg.Specification.Tools {
 		currentItem := item
 		var toolOptions []mcp.ToolOption
 		toolOptions = append(toolOptions, mcp.WithDescription(item.Description))

@@ -42,7 +42,7 @@ spec:
       command: "ip addr show"
       intervalSeconds: 300
 
-  contextItems:
+  tools:
     - name: NodeIPAddress
       description: "Retrieve the primary node IP address used for the default route."
       command: "ip -4 route get 1.1.1.1 | awk '{print $7}' | tr -d '\n'"

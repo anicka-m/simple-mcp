@@ -92,6 +92,81 @@ func TestScratchLogic(t *testing.T) {
 		assert.Equal(t, "static content\ndynamic content\n", string(content))
 	})
 
+	t.Run("CopyResourceTree", func(t *testing.T) {
+		resourceMap := map[string]ResourceItem{
+			"prefix://a/file1.txt": {URI: "prefix://a/file1.txt", Content: "content1"},
+			"prefix://a/b/file2.txt": {URI: "prefix://a/b/file2.txt", Content: "content2"},
+			"prefix://other/file3.txt": {URI: "prefix://other/file3.txt", Content: "content3"},
+			"prefix://a": {URI: "prefix://a", Content: "contentA"},
+		}
+
+		t.Run("MatchWithSlash", func(t *testing.T) {
+			res, err := copyResourceTree(resourceMap, tmpDir, false, "prefix://a/", "tree-slash")
+			require.NoError(t, err)
+			assert.Contains(t, res.Content[0].(mcp.TextContent).Text, "Successfully copied 2 resources")
+
+			content1, _ := os.ReadFile(filepath.Join(tmpDir, "tree-slash/file1.txt"))
+			assert.Equal(t, "content1", string(content1))
+			content2, _ := os.ReadFile(filepath.Join(tmpDir, "tree-slash/b/file2.txt"))
+			assert.Equal(t, "content2", string(content2))
+		})
+
+		t.Run("MatchWithoutSlash", func(t *testing.T) {
+			// Should match prefix://a, prefix://a/file1.txt, prefix://a/b/file2.txt
+			// Wait, if I copy all of them to "tree-no-slash":
+			// prefix://a -> tree-no-slash
+			// prefix://a/file1.txt -> tree-no-slash/file1.txt
+			// This should fail if tree-no-slash is created as a file first.
+			// The order is random in map iteration.
+			// Let's use a cleaner example where they don't overlap as file/dir.
+
+			resourceMapClean := map[string]ResourceItem{
+				"prefix://a/file1.txt": {URI: "prefix://a/file1.txt", Content: "content1"},
+				"prefix://a/b/file2.txt": {URI: "prefix://a/b/file2.txt", Content: "content2"},
+			}
+			res, err := copyResourceTree(resourceMapClean, tmpDir, false, "prefix://a", "tree-no-slash")
+			require.NoError(t, err)
+			assert.Contains(t, res.Content[0].(mcp.TextContent).Text, "Successfully copied 2 resources")
+
+			content1, _ := os.ReadFile(filepath.Join(tmpDir, "tree-no-slash/file1.txt"))
+			assert.Equal(t, "content1", string(content1))
+			content2, _ := os.ReadFile(filepath.Join(tmpDir, "tree-no-slash/b/file2.txt"))
+			assert.Equal(t, "content2", string(content2))
+		})
+
+		t.Run("NoMatch", func(t *testing.T) {
+			res, err := copyResourceTree(resourceMap, tmpDir, false, "prefix://nonexistent", "tree-none")
+			require.NoError(t, err)
+			assert.True(t, res.IsError)
+			assert.Contains(t, res.Content[0].(mcp.TextContent).Text, "no resources found")
+		})
+
+		t.Run("PartialMatchSecurity", func(t *testing.T) {
+			// prefix://a should NOT match prefix://ab/file.txt
+			resourceMapPartial := map[string]ResourceItem{
+				"prefix://ab/file.txt": {URI: "prefix://ab/file.txt", Content: "content"},
+			}
+			res, err := copyResourceTree(resourceMapPartial, tmpDir, false, "prefix://a", "tree-partial")
+			require.NoError(t, err)
+			assert.True(t, res.IsError)
+		})
+
+		t.Run("Overwrite", func(t *testing.T) {
+			_, err := createFile(tmpDir, "tree-overwrite/file1.txt", "old content")
+			require.NoError(t, err)
+
+			resourceMapOverwrite := map[string]ResourceItem{
+				"prefix://a/file1.txt": {URI: "prefix://a/file1.txt", Content: "new content"},
+			}
+			res, err := copyResourceTree(resourceMapOverwrite, tmpDir, false, "prefix://a/", "tree-overwrite")
+			require.NoError(t, err)
+			assert.False(t, res.IsError)
+
+			content1, _ := os.ReadFile(filepath.Join(tmpDir, "tree-overwrite/file1.txt"))
+			assert.Equal(t, "new content", string(content1))
+		})
+	})
+
 	t.Run("ReadFile", func(t *testing.T) {
 		_, err := createFile(tmpDir, "test-file-for-read.txt", "hello read\n")
 		require.NoError(t, err)

@@ -124,6 +124,20 @@ func registerScratchTools(mcpServer *server.MCPServer, resourceMap map[string]Re
 		return copyResourceToFile(resourceMap, tmpDir, verbose, resourceURI, path)
 	})
 	log.Printf("Registered built-in scratch tool: %s", copyResourceToFileTool.Name)
+
+	copyResourceTreeTool := mcp.NewTool("CopyResourceTree",
+		mcp.WithDescription("Recursively copies all resources whose URIs start with a given prefix into a directory in the scratch space."),
+		mcp.WithString("resourcePrefix", mcp.Required(), mcp.Description("The prefix of the resource URIs to copy.")),
+		mcp.WithString("destinationPath", mcp.Required(), mcp.Description("The destination directory path within the scratch space.")))
+	mcpServer.AddTool(copyResourceTreeTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		resourcePrefix, _ := request.RequireString("resourcePrefix")
+		destinationPath, _ := request.RequireString("destinationPath")
+		if verbose {
+			log.Printf("Handling CopyResourceTree request for resourcePrefix: %s, destinationPath: %s", resourcePrefix, destinationPath)
+		}
+		return copyResourceTree(resourceMap, tmpDir, verbose, resourcePrefix, destinationPath)
+	})
+	log.Printf("Registered built-in scratch tool: %s", copyResourceTreeTool.Name)
 }
 
 func copyResourceToFile(resourceMap map[string]ResourceItem, tmpDir string, verbose bool, resourceURI, path string) (*mcp.CallToolResult, error) {
@@ -142,6 +156,56 @@ func copyResourceToFile(resourceMap map[string]ResourceItem, tmpDir string, verb
 	}
 
 	return createFile(tmpDir, path, content)
+}
+
+func copyResourceTree(resourceMap map[string]ResourceItem, tmpDir string, verbose bool, resourcePrefix, destinationPath string) (*mcp.CallToolResult, error) {
+	var matchedURIs []string
+	for uri := range resourceMap {
+		if uri == resourcePrefix {
+			matchedURIs = append(matchedURIs, uri)
+			continue
+		}
+		if strings.HasPrefix(uri, resourcePrefix) {
+			rest := uri[len(resourcePrefix):]
+			if strings.HasPrefix(rest, "/") || strings.HasSuffix(resourcePrefix, "/") {
+				matchedURIs = append(matchedURIs, uri)
+			}
+		}
+	}
+
+	if len(matchedURIs) == 0 {
+		return mcp.NewToolResultError(fmt.Sprintf("no resources found matching prefix: %s", resourcePrefix)), nil
+	}
+
+	for _, uri := range matchedURIs {
+		item := resourceMap[uri]
+		relPath := strings.TrimPrefix(uri, resourcePrefix)
+		relPath = strings.TrimPrefix(relPath, "/")
+
+		targetPath := destinationPath
+		if relPath != "" {
+			targetPath = filepath.Join(destinationPath, relPath)
+		}
+
+		content, err := getResourceContent(item, tmpDir, verbose)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to get resource content for %s: %v", uri, err)), nil
+		}
+
+		if content == "" {
+			return mcp.NewToolResultError(fmt.Sprintf("resource %s has no content or command", uri)), nil
+		}
+
+		res, err := createFile(tmpDir, targetPath, content)
+		if err != nil {
+			return nil, err
+		}
+		if res.IsError {
+			return res, nil
+		}
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Successfully copied %d resources to %s.", len(matchedURIs), destinationPath)), nil
 }
 
 func resolvePath(base, path string) (string, error) {

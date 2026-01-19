@@ -53,7 +53,7 @@ func resolveOptions(cfg *Config, cliListenAddr string, cliTmpDir string, cliVerb
 
 func main() {
 	configFile := flag.String("config", "./simple-mcp.yaml", "Path to the YAML configuration file.")
-	listenAddr := flag.String("listen-addr", ":8080", "Address to listen on for HTTP requests.")
+	listenAddr := flag.String("listen-addr", "localhost:8080", "Address to listen on for HTTP requests.")
 	tmpDir := flag.String("tmpdir", "", "Path to a directory for scratch space.")
 	verbose := flag.Bool("verbose", false, "Enable verbose logging of MCP protocol messages.")
 	flag.Parse()

@@ -27,7 +27,7 @@ The server is configured via simple-mcp.yaml. This file defines:
 
 **Important:** This tool provides shell execution capabilities.
 
-By default, the systemd service binds to 127.0.0.1:8080, allowing only local connections. If you need to access simple-mcp from a remote machine (e.g., an LLM running on a different server), **do not** expose this port directly to the internet.
+By default, simple-mcp binds to localhost:8080, allowing only local connections. If you need to access simple-mcp from a remote machine (e.g., an LLM running on a different server), **do not** expose this port directly to the internet.
 
 Instead, use a reverse proxy like Nginx or Caddy to handle authentication and TLS.
 
@@ -44,7 +44,7 @@ server {
     \# ... ssl config ...
 
     location / {  
-        proxy\_pass \[http://127.0.0.1:8080\](http://127.0.0.1:8080);  
+        proxy\_pass \[http://localhost:8080\](http://localhost:8080);
           
         \# Enable Basic Authentication  
         auth\_basic "Restricted MCP Access";  

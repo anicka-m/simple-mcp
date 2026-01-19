@@ -3,7 +3,7 @@ kind: DynamicContextSource
 metadata:
   name: dynamic-mcp-context
 spec:
-  listenAddr: ":8080"
+  listenAddr: "localhost:8080"
   tmpDir: "/tmp"
   verbose: false
 

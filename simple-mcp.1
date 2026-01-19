@@ -20,7 +20,7 @@ Default: \fI./simple-mcp.yaml\fR (or \fI/etc/simple-mcp/simple-mcp.yaml\fR when 
 .BI \-listen-addr " address"
 The network address and port to listen on for HTTP requests.
 .br
-Default: \fI:8080\fR (The systemd service defaults to \fI127.0.0.1:8080\fR).
+Default: \fIlocalhost:8080\fR.
 .SH CONFIGURATION
 The behavior of the server is defined in \fBsimple-mcp.yaml\fR.
 .P
@@ -78,7 +78,7 @@ simple-mcp -config ./my-config.yaml
 .B Run on a specific port:
 .P
 .RS 4
-simple-mcp -listen-addr 127.0.0.1:9090
+simple-mcp -listen-addr localhost:9090
 .RE
 .SH SEE ALSO
 .BR mcphost (1),

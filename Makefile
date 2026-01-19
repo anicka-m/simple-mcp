@@ -10,7 +10,7 @@ all: build
 
 build: $(SERVER_BINARY) $(CLIENT_BINARY)
 
-$(SERVER_BINARY):
+$(SERVER_BINARY): main.go config.go executor.go task_store.go scratch.go
 	$(BUILD_ENV) $(GO) build $(LDFLAGS) -o $(SERVER_BINARY) .
 
 $(CLIENT_BINARY): cli/main.go

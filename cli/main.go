@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	serverAddr := flag.String("server", "127.0.0.1:8080", "Address of the simple-mcp server.")
+	serverAddr := flag.String("server", "localhost:8080", "Address of the simple-mcp server.")
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {

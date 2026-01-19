@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/simple-mcp --config /etc/simple-mcp/simple-mcp.yaml --listen-addr 127.0.0.1:8080
+ExecStart=/usr/bin/simple-mcp --config /etc/simple-mcp/simple-mcp.yaml --listen-addr localhost:8080
 Restart=on-failure
 RestartSec=5s
 

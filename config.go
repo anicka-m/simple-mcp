@@ -47,8 +47,9 @@ type ResourceItem struct {
 
 // Spec defines the schema for the configuration file.
 type Spec struct {
-	Items     []ContextItem  `yaml:"contextItems"`
-	Resources []ResourceItem `yaml:"resources"`
+	LegacyItems []ContextItem  `yaml:"contextItems,omitempty"`
+	Tools       []ContextItem  `yaml:"tools,omitempty"`
+	Resources   []ResourceItem `yaml:"resources"`
 }
 
 // Config represents the top-level structure of the simple-mcp.yaml file.
@@ -104,6 +105,16 @@ func LoadConfig(path string) (*Config, error) {
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, formatYamlError(path, data, err)
+	}
+
+	if len(config.Specification.LegacyItems) > 0 && len(config.Specification.Tools) > 0 {
+		return nil, fmt.Errorf("failed to parse %s: both 'contextItems' and 'tools' are defined in 'spec', please use only 'tools'", path)
+	}
+
+	// If 'contextItems' is used, move them to 'Tools' to standardize on the new name.
+	if len(config.Specification.LegacyItems) > 0 {
+		config.Specification.Tools = config.Specification.LegacyItems
+		config.Specification.LegacyItems = nil // Clear LegacyItems to avoid confusion
 	}
 
 	// Get the directory of the config file to resolve relative paths

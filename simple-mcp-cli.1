@@ -1,0 +1,60 @@
+.TH SIMPLE-MCP-CLI 1 "November 20, 2025" "0.6" "Simple MCP Manual"
+.SH NAME
+simple-mcp-cli \- Command-line client for the simple-mcp server
+.SH SYNOPSIS
+.B simple-mcp-cli
+[\fI\-server address\fR] \fIsubcommand\fR [\fIargs\fR]
+.SH DESCRIPTION
+.B simple-mcp-cli
+is a testing and debugging tool for the \fBsimple-mcp\fR server. It allows users
+to list and invoke tools and resources directly from the command line.
+
+.SH OPTIONS
+.TP
+.BI \-server " address"
+The address of the \fBsimple-mcp\fR server (default: \fIlocalhost:8080\fR).
+
+.SH SUBCOMMANDS
+.TP
+.B list-tools
+Lists all tools exposed by the server.
+.TP
+.BI show-tool " name"
+Displays the description of the specified tool.
+.TP
+.B list-resources
+Lists all resources exposed by the server.
+.TP
+.BI show-resource " uri"
+Displays the description of the specified resource.
+.TP
+.BI resource " uri"
+Reads and prints the content of the specified resource.
+.TP
+.BI tool " name " [ \-\-param " value " ]...
+Invokes the specified tool with parameters. Parameters must be prefixed with
+double dashes (\-\-).
+
+.SH EXAMPLES
+.B List all tools:
+.P
+.RS 4
+simple-mcp-cli list-tools
+.RE
+.P
+.B Get system uptime resource:
+.P
+.RS 4
+simple-mcp-cli resource simple-mcp://system/uptime
+.RE
+.P
+.B Call a tool with a parameter:
+.P
+.RS 4
+simple-mcp-cli tool PackageVersion --package bash
+.RE
+
+.SH SEE ALSO
+.BR simple-mcp (1)
+.SH AUTHOR
+Vojtech Pavlik <vojtech@suse.com>

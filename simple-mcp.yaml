@@ -46,6 +46,11 @@ spec:
       command: "ip addr show"
       intervalSeconds: 300
 
+    # Example of a directory-based resource:
+    # - uri: "simple-mcp://system/logs/"
+    #   description: "Exposes system logs as individual resources."
+    #   directory: "/var/log"
+
   tools:
     - name: NodeIPAddress
       description: "Retrieve the primary node IP address used for the default route."
@@ -85,3 +90,9 @@ spec:
       description: "Gets the installed version of a specific RPM package."
       command: "rpm -q {{.package}}"
       parameters: ["package"]
+
+    - name: LongRunningTask
+      description: "A simulated long-running task to demonstrate asynchronous execution."
+      command: "sleep 10 && echo 'Task completed after 10 seconds'"
+      async: true
+      timeoutSeconds: 60

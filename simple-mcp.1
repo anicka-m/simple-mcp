@@ -1,42 +1,92 @@
-.TH SIMPLE-MCP 1 "November 2025" "0.6" "Simple MCP Manual"
+.TH SIMPLE-MCP 1 "November 20, 2025" "0.6" "Simple MCP Manual"
 .SH NAME
 simple-mcp \- Simple Model Context Protocol (MCP) server in Go
 .SH SYNOPSIS
 .B simple-mcp
-[\fI\-config file\fR] [\fI\-listen-addr address\fR]
+[\fI\-config file\fR] [\fI\-listen-addr address\fR] [\fI\-tmpdir directory\fR]
+[\fI\-verbose\fR]
 .SH DESCRIPTION
 .B simple-mcp
-is a lightweight server implementing the Model Context Protocol (MCP). It is designed to bridge Large Language Model (LLM) agents with the local Linux system.
+is a lightweight server implementing the Model Context Protocol (MCP). It is
+designed to bridge Large Language Model (LLM) agents with the local Linux
+system.
 
-It exposes a set of "Tools" (executable commands) and "Resources" (static or dynamic system data) defined in a YAML configuration file. This allows an LLM to query system status (e.g., uptime, logs) or perform actions (e.g., upgrades, reboots) in a controlled environment.
+It exposes a set of "Tools" (executable commands) and "Resources" (static or
+dynamic system data) defined in a YAML configuration file. This allows an LLM to
+query system status (e.g., uptime, logs) or perform actions (e.g., upgrades,
+reboots) in a controlled environment.
 
 .SH OPTIONS
 .TP
 .BI \-config " file"
 Path to the YAML configuration file.
 .br
-Default: \fI./simple-mcp.yaml\fR (or \fI/etc/simple-mcp/simple-mcp.yaml\fR when running as a system service).
+Default: \fI./simple-mcp.yaml\fR (or \fI/etc/simple-mcp/simple-mcp.yaml\fR when
+running as a system service).
 .TP
 .BI \-listen-addr " address"
 The network address and port to listen on for HTTP requests.
 .br
 Default: \fIlocalhost:8080\fR.
+.TP
+.BI \-tmpdir " directory"
+Path to a directory for the scratch space. When enabled, the server provides
+tools for file manipulation within this directory.
+.TP
+.B \-verbose
+Enable verbose logging of MCP protocol messages.
+
 .SH CONFIGURATION
 The behavior of the server is defined in \fBsimple-mcp.yaml\fR.
 .P
-This file defines:
+The \fBspec\fR section supports the following global options:
 .IP \[bu] 2
-\fBContextItems (Tools):\fR Commands the LLM can execute. Supports synchronous and asynchronous execution (for long-running tasks).
+\fBlistenAddr:\fR Same as \fB\-listen-addr\fR.
 .IP \[bu]
-\fBResources:\fR Data endpoints the LLM can read (e.g., file contents or command output).
+\fBtmpDir:\fR Same as \fB\-tmpdir\fR.
+.IP \[bu]
+\fBverbose:\fR Same as \fB\-verbose\fR.
+
+.P
+The configuration also defines:
+.TP
+\fBTools\fR
+Commands the LLM can execute. Supports synchronous and asynchronous execution.
+.RS
+.IP \[bu] 2
+\fBasync:\fR If set to \fItrue\fR, the tool runs in the background.
+.IP \[bu]
+\fBtimeoutSeconds:\fR Maximum execution time (default: 30s).
+.IP \[bu]
+\fBcommand:\fR Supports Go template syntax for parameter substitution.
+.RE
+.TP
+\fBResources\fR
+Data endpoints the LLM can read (e.g., file contents or command output).
+.RS
+.IP \[bu] 2
+\fBdirectory:\fR Recursively adds all files in a directory subtree as resources.
+.IP \[bu]
+\fBintervalSeconds:\fR Suggested refresh interval for clients.
+.RE
 .P
 Example configuration location: \fI/etc/simple-mcp/simple-mcp.yaml\fR
+
+.SH SCRATCH SPACE
+When a scratch directory is provided via \fB\-tmpdir\fR or \fBtmpDir\fR,
+\fBsimple-mcp\fR automatically registers a set of tools that allow the LLM to
+create, read, modify, and delete files, as well as copy system resources into
+the scratch space. All file operations are restricted to the specified
+directory.
 .SH SECURITY
-Since \fBsimple-mcp\fR provides shell access, it is critical to restrict network access.
+Since \fBsimple-mcp\fR provides shell access, it is critical to restrict network
+access.
 
-The provided systemd service binds to \fB127.0.0.1\fR (localhost) by default. This prevents external access.
+The provided systemd service binds to \fB127.0.0.1\fR (localhost) by default.
+This prevents external access.
 
-If you need to access the API remotely, it is highly recommended to use a reverse proxy (such as \fBnginx\fR or \fBcaddy\fR) configured with:
+If you need to access the API remotely, it is highly recommended to use a
+reverse proxy (such as \fBnginx\fR or \fBcaddy\fR) configured with:
 .IP \[bu] 2
 SSL/TLS encryption (HTTPS)
 .IP \[bu]
@@ -44,11 +94,13 @@ Authentication (Basic Auth, OAuth, or mTLS)
 .P
 Do not expose the raw port 8080 to the public internet.
 .SH USAGE WITH MCPHOST
-This server is compatible with \fBmcphost\fR. An example configuration is provided in \fImcphost.yaml\fR.
+This server is compatible with \fBmcphost\fR. An example configuration is
+provided in \fImcphost.yaml\fR.
 
 To use it:
 .IP 1. 3
-Ensure \fBollama\fR is running and the model specified in \fImcphost.yaml\fR (default: qwen3-coder:30b) is available.
+Ensure \fBollama\fR is running and the model specified in \fImcphost.yaml\fR
+(default: qwen3-coder:30b) is available.
 .IP 2. 3
 Start the simple-mcp server (or ensure the system service is running).
 .IP 3. 3
@@ -81,6 +133,7 @@ simple-mcp -config ./my-config.yaml
 simple-mcp -listen-addr localhost:9090
 .RE
 .SH SEE ALSO
+.BR simple-mcp-cli (1),
 .BR mcphost (1),
 .BR ollama (1)
 .SH AUTHOR

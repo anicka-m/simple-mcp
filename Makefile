@@ -4,7 +4,7 @@ GO=go
 LDFLAGS=-ldflags="-w -s"
 BUILD_ENV=CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 
-.PHONY: all build clean
+.PHONY: all build clean lint-docs
 
 all: build
 
@@ -18,3 +18,10 @@ $(CLIENT_BINARY): cli/main.go
 
 clean:
 	rm -f $(SERVER_BINARY) $(CLIENT_BINARY)
+
+lint-docs:
+	@echo "Linting manpages..."
+	@mandoc -Tlint simple-mcp.1
+	@mandoc -Tlint simple-mcp-cli.1
+	@echo "Linting README..."
+	@markdownlint-cli2 README.md

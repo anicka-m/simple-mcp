@@ -50,6 +50,9 @@ type Spec struct {
 	LegacyItems []ContextItem  `yaml:"contextItems,omitempty"`
 	Tools       []ContextItem  `yaml:"tools,omitempty"`
 	Resources   []ResourceItem `yaml:"resources"`
+	ListenAddr  string         `yaml:"listenAddr,omitempty"`
+	TmpDir      string         `yaml:"tmpDir,omitempty"`
+	Verbose     *bool          `yaml:"verbose,omitempty"`
 }
 
 // Config represents the top-level structure of the simple-mcp.yaml file.

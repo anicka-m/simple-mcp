@@ -3,6 +3,10 @@ kind: DynamicContextSource
 metadata:
   name: dynamic-mcp-context
 spec:
+  listenAddr: ":8080"
+  tmpDir: "/tmp"
+  verbose: false
+
   resources:
     - uri: "simple-mcp://system/overview"
       description: "An overview of the system under management, loaded from a file."

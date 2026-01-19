@@ -31,6 +31,26 @@ func countLines(s string) int {
 	return strings.Count(s, "\n") + 1
 }
 
+func resolveOptions(cfg *Config, cliListenAddr string, cliTmpDir string, cliVerbose bool, setFlags map[string]bool) (string, string, bool) {
+	// Precedence: Command-line flag > YAML config > Default.
+	finalListenAddr := cliListenAddr
+	if !setFlags["listen-addr"] && cfg.Specification.ListenAddr != "" {
+		finalListenAddr = cfg.Specification.ListenAddr
+	}
+
+	finalTmpDir := cliTmpDir
+	if !setFlags["tmpdir"] && cfg.Specification.TmpDir != "" {
+		finalTmpDir = cfg.Specification.TmpDir
+	}
+
+	finalVerbose := cliVerbose
+	if !setFlags["verbose"] && cfg.Specification.Verbose != nil {
+		finalVerbose = *cfg.Specification.Verbose
+	}
+
+	return finalListenAddr, finalTmpDir, finalVerbose
+}
+
 func main() {
 	configFile := flag.String("config", "./simple-mcp.yaml", "Path to the YAML configuration file.")
 	listenAddr := flag.String("listen-addr", ":8080", "Address to listen on for HTTP requests.")
@@ -38,18 +58,26 @@ func main() {
 	verbose := flag.Bool("verbose", false, "Enable verbose logging of MCP protocol messages.")
 	flag.Parse()
 
-	if *tmpDir != "" {
-		log.Printf("Scratch space enabled at: %s", *tmpDir)
-		if err := checkTmpDir(*tmpDir); err != nil {
-			log.Fatalf("ERROR: Invalid --tmpdir: %v", err)
-		}
-	}
-
 	cfg, err := LoadConfig(*configFile)
 	if err != nil {
 		log.Fatalf("ERROR: Error loading configuration: %v", err)
 	}
 	log.Printf("Configuration loaded successfully from %s", *configFile)
+
+	// Determine which flags were explicitly set by the user on the command line.
+	setFlags := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		setFlags[f.Name] = true
+	})
+
+	finalListenAddr, finalTmpDir, finalVerbose := resolveOptions(cfg, *listenAddr, *tmpDir, *verbose, setFlags)
+
+	if finalTmpDir != "" {
+		log.Printf("Scratch space enabled at: %s", finalTmpDir)
+		if err := checkTmpDir(finalTmpDir); err != nil {
+			log.Fatalf("ERROR: Invalid scratch space directory: %v", err)
+		}
+	}
 
 	taskStore := NewTaskStore()
 	log.Printf("Task store initialized.")
@@ -70,20 +98,20 @@ func main() {
 	)
 	log.Printf("MCP Server %s with API %s created.", cfg.Metadata.Name, cfg.APIVersion)
 
-	registerBuiltinTools(mcpServer, taskStore, resourceMap, *tmpDir, *verbose)
-	registerConfigTools(mcpServer, cfg, taskStore, *tmpDir, *verbose)
-	registerResources(mcpServer, cfg, *tmpDir, *verbose)
+	registerBuiltinTools(mcpServer, taskStore, resourceMap, finalTmpDir, finalVerbose)
+	registerConfigTools(mcpServer, cfg, taskStore, finalTmpDir, finalVerbose)
+	registerResources(mcpServer, cfg, finalTmpDir, finalVerbose)
 
-	if *tmpDir != "" {
-		registerScratchTools(mcpServer, resourceMap, *tmpDir, *verbose)
+	if finalTmpDir != "" {
+		registerScratchTools(mcpServer, resourceMap, finalTmpDir, finalVerbose)
 	}
 
 	log.Printf("Creating Streamable HTTP server...")
 	httpOpts := []server.StreamableHTTPOption{}
 	httpServer := server.NewStreamableHTTPServer(mcpServer, httpOpts...)
 
-	log.Printf("MCP server starting, listening on %s/mcp ...", *listenAddr)
-	if err := httpServer.Start(*listenAddr); err != nil {
+	log.Printf("MCP server starting, listening on %s/mcp ...", finalListenAddr)
+	if err := httpServer.Start(finalListenAddr); err != nil {
 		log.Fatalf("ERROR: Could not start HTTP server: %v", err)
 	}
 }

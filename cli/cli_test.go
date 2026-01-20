@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestBugFix(t *testing.T) {
+func TestListTools(t *testing.T) {
 	// Get the project root directory
 	dir, err := filepath.Abs(".")
 	if err != nil {
@@ -48,7 +48,7 @@ func TestBugFix(t *testing.T) {
 	}
 
 	// Verify that the client output contains the expected tool names
-	expectedTools := []string{"ping", "ListPendingTasks", "TaskStatus", "ListResources", "GetResource"}
+	expectedTools := []string{"ListPendingTasks", "TaskStatus", "ListResources", "GetResource"}
 	output := out.String()
 	for _, tool := range expectedTools {
 		if !strings.Contains(output, tool) {

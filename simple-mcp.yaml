@@ -4,7 +4,8 @@ metadata:
   name: dynamic-mcp-context
 spec:
   listenAddr: "localhost:8080"
-  tmpDir: "/tmp"
+  # Adding a scratch space will enable file operations (create, modify, delete) limited to that directory
+  tmpDir: ""
   verbose: false
 
   resources:

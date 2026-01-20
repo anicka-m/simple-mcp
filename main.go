@@ -144,18 +144,6 @@ func checkTmpDir(path string) error {
 // registerBuiltinTools adds the core infrastructure tools required for
 // mcphost compatibility and async task management.
 func registerBuiltinTools(mcpServer *server.MCPServer, taskStore *TaskStore, resourceMap map[string]ResourceItem, tmpDir string, verbose bool) {
-	pingTool := mcp.NewTool(
-		"ping",
-		mcp.WithDescription("Responds with 'pong' to keep the connection alive."),
-	)
-	mcpServer.AddTool(pingTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		if verbose {
-			log.Printf("Handling ping request.")
-		}
-		return mcp.NewToolResultText("pong"), nil
-	})
-	log.Printf("Registered built-in tool: %s", pingTool.Name)
-
 	// Helps the LLM recover context if it forgets a task ID.
 	listTasksTool := mcp.NewTool(
 		"ListPendingTasks",

@@ -20,81 +20,56 @@ spec:
 
     # --- Elemental 3 Configuration & Documentation ---
     - uri: "elemental://guide"
-      description: "Guide for building custom OS images using Elemental 3."
+      description: "Guide for customizing (building) OS images using Elemental 3."
       content: |
-        # Elemental 3 Build Guide
+        # Elemental 3 Customize Guide
         
-        To build a custom Linux image using Elemental, follow this workflow:
+        To customize (build) a Linux image using Elemental, follow this workflow:
         
-        1. **Get Examples**: Read all the `elemental://config/` resources to get valid YAML content for required files. All the files are required for a successful build.
-        2. **Validate**: Check `elemental://schema` to ensure your
-           changes (if any) match the required structure. The schema covers only
-           files directly in the config directory. Files in the 'network' subdirectory  follow the
-           standard nmstate format and files in the 'kubernetes' subdirectory are
-           standard Kubernetes and Helm configuration files.
+        1. **Get Examples**: Read all the 'elemental://config/' resources to
+           get valid YAML content for required files. There are three trees (linux-only,
+           single-node, multi-node), each representing a working configuration directory.
+           All the files from one of the trees are required for a successful build.
+
+        2. **Validate**: Check 'elemental://schema' to ensure your changes (if
+           any) match the required structure. The schema covers only files
+           directly in the config directory. Files in the 'network' subdirectory
+           follow the standard nmstate format and files in the 'kubernetes'
+           subdirectory are standard Kubernetes and Helm configuration files.
+
         3. **Create Config**:
-           - Use `CreateDirectory` to create a working folder (e.g., `config`).
-           - Use `CreateFile` to write the example content (adapted as needed) to files inside that folder.
+           - Use 'CreateDirectory' to create a working folder (e.g., 'config').
+           - Use 'CreateFile' to write the example content (adapted as needed) to files inside that folder.
+
         4. **Build**:
-           - Call `Elemental3Build` pointing to your config directory.
-           - Specify the output file (e.g., `my-image.raw`).
-           - Only ImageType `raw` is supported.
+           - Call 'Elemental3Customize' pointing to your config directory.
+           - Specify the output file (e.g., 'my-image.raw').
+           - Only ImageType 'raw' is supported.
+
+        5. **Documentation**:
+           - Feel free to search the resources or access elemental://docs/ directly
+             for additional information on how to use Elemental 3. Note that not all
+             of the functionality described there is enabled by this MCP server.
 
     - uri: "elemental://schema"
       description: "JSON Schema definition for the Elemental 3 configuration directory."
       contentFile: "elemental-schema.json"
 
-    - uri: "elemental://config/butane.yaml"
-      description: "Working example of butane.yaml"
-      contentFile: "elemental-example/butane.yaml"
+    - uri: "elemental://config/linux-only/"
+      description: "Working example of a linux-only (no RKE2, no Kubernetes) Unified Core configuration."
+      directory: "elemental-example/linux-only/"
 
-    - uri: "elemental://config/kubernetes.yaml"
-      description: "Working example of kubernetes.yaml"
-      contentFile: "elemental-example/kubernetes.yaml"
+    - uri: "elemental://config/single-node/"
+      description: "Working example of a single-node RKE2/Kubernetes Unified Core configuration. Single node provides working Kubernetes, but no high availability."
+      directory: "elemental-example/single-node/"
 
-    - uri: "elemental://config/kubernetes/config/agent.yaml"
-      description: "Working example of kubernetes/config/agent.yaml"
-      contentFile: "elemental-example/kubernetes/config/agent.yaml"
+    - uri: "elemental://config/single-node/"
+      description: "Working example of a multi-node RKE2/Kubernetes Unified Core configuration. Multi node provides working Kubernetes, and high availability."
+      directory: "elemental-example/multi-node/"
 
-    - uri: "elemental://config/kubernetes/config/server.yaml"
-      description: "Working example of kubernetes/config/server.yaml"
-      contentFile: "elemental-example/kubernetes/config/server.yaml"
-
-    - uri: "elemental://config/kubernetes/helm/values/rancher.yaml"
-      description: "Working example of kubernetes/helm/values/rancher.yaml"
-      contentFile: "elemental-example/kubernetes/helm/values/rancher.yaml"
-
-    - uri: "elemental://config/kubernetes/manifests/ip-pool.yaml"
-      description: "Working example of kubernetes/manifests/ip-pool.yaml"
-      contentFile: "elemental-example/kubernetes/manifests/ip-pool.yaml"
-
-    - uri: "elemental://config/kubernetes/manifests/l2-adv.yaml"
-      description: "Working example of kubernetes/manifests/l2-adv.yaml"
-      contentFile: "elemental-example/kubernetes/manifests/l2-adv.yaml"
-
-    - uri: "elemental://config/kubernetes/manifests/rke2-ingress-config.yaml"
-      description: "Working example of kubernetes/manifests/rke2-ingress-config.yaml"
-      contentFile: "elemental-example/kubernetes/manifests/rke2-ingress-config.yaml"
-
-    - uri: "elemental://config/network/node1.qemu.yaml"
-      description: "Working example of network/node1.qemu.yaml"
-      contentFile: "elemental-example/network/node1.qemu.yaml"
-
-    - uri: "elemental://config/network/node2.libvirt.yaml"
-      description: "Working example of network/node2.libvirt.yaml"
-      contentFile: "elemental-example/network/node2.libvirt.yaml"
-
-    - uri: "elemental://config/suse-product-manifest.yaml"
-      description: "Working example of suse-product-manifest.yaml"
-      contentFile: "elemental-example/suse-product-manifest.yaml"
-
-    - uri: "elemental://config/install.yaml"
-      description: "Working example of install.yaml"
-      contentFile: "elemental-example/install.yaml"
-
-    - uri: "elemental://config/release.yaml"
-      description: "Working example of release.yaml"
-      contentFile: "elemental-example/release.yaml"
+    - uri: "elemental://docs/"
+      description: "Elemental3 documentation."
+      directory: "elemental-example/docs/"
 
   tools:
     - name: Uptime
@@ -226,11 +201,11 @@ spec:
       description: "Checks the installed version of the Elemental 3 CLI."
       command: "elemental3 version"
 
-    - name: Elemental3Build
-      description: "Builds a custom OS image. Requires a valid config directory. Check the elemental://guide resource before using. This is a long-running process, so it's better to continue chatting with the user and check the progress on each interaction."
+    - name: Elemental3Customize
+      description: "Customizes an OS image. Requires a valid config directory. Check the elemental://guide resource before using. This is a long-running process, so it's better to continue chatting with the user and check the progress on each interaction."
       # We include --local to support local container storage if needed, though remote OCI is default.
       # The command outputs to stdout/stderr, which the async handler captures.
-      command: "elemental3 build --config-dir {{.configDir}} --output {{.outputFile}} --image-type {{.imageType}}"
+      command: "elemental3 customize  --config-dir {{.configDir}} --output {{.outputFile}} --image-type {{.imageType}}"
       parameters: ["configDir", "outputFile", "imageType"]
       timeoutSeconds: 1800 # 30 minutes allow time for pulling images and building
       async: true

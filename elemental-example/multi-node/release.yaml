@@ -5,8 +5,7 @@ manifestURI: file://./suse-product-manifest.yaml
 components:
   systemd:
     - extension: rke2 # from core release
-    - extension: elemental3ctl
   helm:
     - chart: metallb # from core release
-#    - chart: rancher # from product release
-#      valuesFile: rancher.yaml
+    - chart: rancher # from product release
+      valuesFile: rancher.yaml

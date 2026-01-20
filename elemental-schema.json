@@ -22,21 +22,41 @@
                 "type": "string",
                 "description": "Additional parameters to add to the kernel command line."
               },
-              "diskSize": {
-                "type": "string",
-                "description": "Specifies the size of the resulting disk image (e.g., '10G').",
-                "pattern": "^[1-9]\\d*[KMGT]$"
-              },
               "cryptoPolicy": {
                 "type": "string",
                 "default": "default",
                 "enum": ["default", "fips"]
+              },
+              "raw": {
+                "type": "object",
+                "properties": {
+                  "diskSize": {
+                    "type": "string",
+                    "description": "Specifies the size of the resulting disk image (e.g., '10G').",
+                    "pattern": "^[1-9]\\d*[KMGT]$"
+                  }
+                },
+                "required": ["diskSize"]
+              },
+              "iso": {
+                "type": "object",
+                "properties": {
+                  "device": {
+                    "type": "string",
+                    "description": "Specifies the disk that will be used as the install device."
+                  }
+                },
+                "required": ["device"]
               }
             },
-            "required": ["bootloader", "diskSize"]
+            "required": ["bootloader"],
+            "oneOf": [
+              { "required": ["raw"] },
+              { "required": ["iso"] }
+            ]
           }
         },
-	"suse-product-manifest.yaml": {
+        "suse-product-manifest.yaml": {
           "required": false,
           "description": "Example Product Release Manifest. This filename is arbitrary; referenced by release.yaml.",
           "schema": {
@@ -60,7 +80,7 @@
                   "image": { "type": "string" },
                   "version": { "type": "string" }
                 },
-                "required": ["image", "version"]
+                "required": ["image"]
               },
               "components": {
                 "type": "object",

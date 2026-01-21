@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"text/template"
 	"time"
@@ -24,13 +25,27 @@ import (
 // the exit code, and any Go-level error that occurred.
 func executeCommand(item ContextItem, params map[string]interface{}, workDir string) (string, int, time.Duration, error) {
 	startTime := time.Now()
+
+	// We separate code from data by passing parameters as environment variables.
+	envVars := make([]string, 0, len(params))
+	templateData := make(map[string]string)
+
+	for key, value := range params {
+		envVarName := fmt.Sprintf("_MCP_VAR_%s", key)
+		strValue := fmt.Sprintf("%v", value)
+		envVars = append(envVars, fmt.Sprintf("%s=%s", envVarName, strValue))
+		templateData[key] = "$" + envVarName
+	}
+
+	// Parse the command template
 	tmpl, err := template.New("command").Parse(item.Command)
 	if err != nil {
 		return "", -1, 0, fmt.Errorf("invalid command template in config: %w", err)
 	}
 
+	// Render the command string using the variable references
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, params); err != nil {
+	if err := tmpl.Execute(&buf, templateData); err != nil {
 		return "", -1, 0, fmt.Errorf("failed to build command from template: %w", err)
 	}
 	finalCommand := buf.String()
@@ -45,6 +60,9 @@ func executeCommand(item ContextItem, params map[string]interface{}, workDir str
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", finalCommand)
+
+	// Attach the current environment + our safe parameter variables
+	cmd.Env = append(os.Environ(), envVars...)
 
 	// Set the working directory for the command.
 	if workDir != "" {

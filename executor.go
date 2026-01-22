@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -31,7 +32,17 @@ func executeCommand(item ContextItem, params map[string]interface{}, workDir str
 	templateData := make(map[string]string)
 
 	for key, value := range params {
-		envVarName := fmt.Sprintf("_MCP_VAR_%s", key)
+		// Sanitize the key to be a valid shell variable name
+		var sanitizedKey strings.Builder
+		for _, r := range key {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+				sanitizedKey.WriteRune(r)
+			} else {
+				sanitizedKey.WriteRune('_')
+			}
+		}
+
+		envVarName := fmt.Sprintf("_MCP_VAR_%s", sanitizedKey.String())
 		strValue := fmt.Sprintf("%v", value)
 		envVars = append(envVars, fmt.Sprintf("%s=%s", envVarName, strValue))
 		templateData[key] = "$" + envVarName

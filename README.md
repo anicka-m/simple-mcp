@@ -96,17 +96,20 @@ Use the `-server` flag to specify the server address (default: `localhost:8080`)
 **Important:** This tool provides shell execution capabilities. Do not expose
 this service to the public internet without authentication.
 
-By default, simple-mcp binds to `localhost:8080`, allowing only local
-connections. If you need to access simple-mcp from a remote machine, you should
-use an authenticated reverse proxy.
+### **Restricting Network Access**
 
-The Model Context Protocol (MCP) does not implement authentication itself. It is
-highly recommended to use a standard reverse proxy (like Nginx, Apache, Caddy, or
+By default, simple-mcp binds to localhost:8080, allowing only local connections.
+
+The Model Context Protocol (MCP) does not implement authentication itself. If you
+need to use simple-mcp outside of the machine it is running on, it is
+highly recommended to use a **standard reverse proxy** (like Nginx, Apache, Caddy, or
 Traefik) to handle:
 
 *   **TLS/SSL Encryption:** To protect data in transit.
 *   **Authentication:** To restrict access to authorized users (e.g., Basic
     Auth, OAuth2, OIDC).
+
+### **Example: Nginx with Basic Auth**
 
 Comprehensive examples for various reverse proxies can be found in the
 [`webauth-examples/`](./webauth-examples/) directory:
@@ -115,6 +118,29 @@ Comprehensive examples for various reverse proxies can be found in the
 *   **Apache:** [Basic Auth](./webauth-examples/apache-basic-auth.conf), [OpenID Connect](./webauth-examples/apache-oidc.conf)
 *   **Caddy:** [Basic Auth & Forward Auth](./webauth-examples/Caddyfile)
 *   **Traefik:** [Docker Labels for Basic/Forward Auth](./webauth-examples/traefik-docker-compose.yaml)
+
+### **Parameters and Shell Injection**
+
+`simple-mcp` uses environment variables to pass parameters to shell commands.
+This prevents direct command injection (e.g., passing `dummy; touch /tmp/evil`
+as a parameter will not execute the second command).
+
+However, users must still be careful when designing tool commands:
+
+*   **Argument Splitting & Globbing:** By default, if you use `{{.param}}`
+    without quotes, the shell will expand the variable and then perform word
+    splitting and globbing. For example, if `param` is `hello world`, `echo {{.param}}`
+    becomes `echo hello world` (two arguments). If `param` is `*`, it might
+    expand to a list of files.
+*   **Use Double Quotes:** It is highly recommended to use double quotes around
+    parameters: `"{{.param}}"`. This ensures the shell treats the parameter
+    as a single string and prevents globbing.
+*   **Input Validation:** While direct execution is prevented, parameters are
+    still passed to underlying programs. Ensure these programs handle untrusted
+    input safely and don't have vulnerabilities that could be triggered by
+    maliciously crafted arguments (e.g., "Bobby Tables" scenarios).
+*   **Avoid `eval`:** Do not use `eval` or similar constructs with parameters
+    in your commands, as this would re-introduce shell injection risks.
 
 ## **Usage with mcphost**
 

@@ -75,9 +75,9 @@ Example configuration location: \fI/etc/simple-mcp/simple-mcp.yaml\fR
 .SH SCRATCH SPACE
 When a scratch directory is provided via \fB\-tmpdir\fR or \fBtmpDir\fR,
 \fBsimple-mcp\fR automatically registers a set of tools that allow the LLM to
-create, read, modify, and delete files, as well as copy system resources into
-the scratch space. All file operations are restricted to the specified
-directory.
+create, read, replace content in, and delete files, as well as copy system
+resources into the scratch space. All file operations are restricted to the
+specified directory.
 .SH SECURITY
 Since \fBsimple-mcp\fR provides shell access, it is critical to restrict network
 access.

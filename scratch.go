@@ -8,7 +8,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -16,7 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bluekeyes/go-gitdiff/gitdiff"
+	"regexp"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -61,19 +61,23 @@ func registerScratchTools(mcpServer *server.MCPServer, resourceMap map[string]Re
 	})
 	log.Printf("Registered built-in scratch tool: %s", deleteFileTool.Name)
 
-	modifyFileTool := mcp.NewTool("ModifyFile",
-		mcp.WithDescription("Modifies a file in the scratch space using a unified diff."),
+	replaceInFileTool := mcp.NewTool("ReplaceInFile",
+		mcp.WithDescription("Replaces a pattern in a file in the scratch space using a regular expression."),
 		mcp.WithString("path", mcp.Required(), mcp.Description("The path to the file within the scratch space.")),
-		mcp.WithString("patch", mcp.Required(), mcp.Description("The unified diff patch to apply.")))
-	mcpServer.AddTool(modifyFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		mcp.WithString("pattern", mcp.Required(), mcp.Description("The regular expression pattern to search for.")),
+		mcp.WithString("replacement", mcp.Required(), mcp.Description("The replacement string. Supports capture groups (e.g., $1).")),
+		mcp.WithBoolean("replaceAll", mcp.Description("If true, replace all occurrences. If false (default), replace only the first occurrence.")))
+	mcpServer.AddTool(replaceInFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		path, _ := request.RequireString("path")
-		patch, _ := request.RequireString("patch")
+		pattern, _ := request.RequireString("pattern")
+		replacement, _ := request.RequireString("replacement")
+		replaceAll := request.GetBool("replaceAll", false)
 		if verbose {
-			log.Printf("Handling ModifyFile request for path: %s", path)
+			log.Printf("Handling ReplaceInFile request for path: %s", path)
 		}
-		return modifyFile(tmpDir, path, patch)
+		return replaceInFile(tmpDir, path, pattern, replacement, replaceAll)
 	})
-	log.Printf("Registered built-in scratch tool: %s", modifyFileTool.Name)
+	log.Printf("Registered built-in scratch tool: %s", replaceInFileTool.Name)
 
 	listDirectoryTool := mcp.NewTool("ListDirectory",
 		mcp.WithDescription("Lists the contents of a directory in the scratch space."),
@@ -261,31 +265,42 @@ func deleteFile(tmpDir, path string) (*mcp.CallToolResult, error) {
 	return mcp.NewToolResultText("File deleted successfully."), nil
 }
 
-func modifyFile(tmpDir, path, patch string) (*mcp.CallToolResult, error) {
+func replaceInFile(tmpDir, path, pattern, replacement string, replaceAll bool) (*mcp.CallToolResult, error) {
 	fullPath, err := resolvePath(tmpDir, path)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("file not found: %s", path)
-	}
-	original, err := os.Open(fullPath)
+	contentBytes, err := os.ReadFile(fullPath)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to open file: %v", err)), nil
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("file not found: %s", path)
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("failed to read file: %v", err)), nil
 	}
-	defer original.Close()
-	files, _, err := gitdiff.Parse(strings.NewReader(patch))
+	content := string(contentBytes)
+
+	re, err := regexp.Compile("(?s)" + pattern)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to parse patch: %v", err)), nil
+		return mcp.NewToolResultError(fmt.Sprintf("invalid regular expression: %v", err)), nil
 	}
-	if len(files) != 1 {
-		return mcp.NewToolResultError("patch must contain exactly one file"), nil
+
+	var newContent string
+	if replaceAll {
+		if !re.MatchString(content) {
+			return mcp.NewToolResultError("pattern not found in file"), nil
+		}
+		newContent = re.ReplaceAllString(content, replacement)
+	} else {
+		indices := re.FindStringSubmatchIndex(content)
+		if indices == nil {
+			return mcp.NewToolResultError("pattern not found in file"), nil
+		}
+		result := []byte{}
+		result = re.ExpandString(result, replacement, content, indices)
+		newContent = content[:indices[0]] + string(result) + content[indices[1]:]
 	}
-	var output bytes.Buffer
-	if err := gitdiff.Apply(&output, original, files[0]); err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("failed to apply patch: %v", err)), nil
-	}
-	if err := os.WriteFile(fullPath, output.Bytes(), 0644); err != nil {
+
+	if err := os.WriteFile(fullPath, []byte(newContent), 0644); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("failed to write modified file: %v", err)), nil
 	}
 	return mcp.NewToolResultText("File modified successfully."), nil

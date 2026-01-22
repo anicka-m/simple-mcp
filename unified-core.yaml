@@ -14,7 +14,7 @@ spec:
     - uri: "simple-mcp://scratch-space"
       content: |
         Simple-mcp offers a persistent scratch space that can be used for creating files and directories needed for execution of some of its MCP tools.
-        CreateFile, ReadFile, ModifyFile, DeleteFile, CreateDirectory, RemoveDirectory and List directory all operate in this scratch space, and are not
+        CreateFile, ReadFile, ReplaceInFile, DeleteFile, CreateDirectory, RemoveDirectory and List directory all operate in this scratch space, and are not
         allowed to use paths that would escape out of it. No absolute paths (starting with "/") or paths containing ".." are allowed. All simple-mcp's 
         tools execute with this space as their current working directory.
 

@@ -12,6 +12,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -50,7 +51,7 @@ func (ts *TaskStore) Create(id string, toolName string) *AsyncTask {
 		Message:   "Job has been queued.",
 		StartTime: time.Now(),
 	}
-	ts.tasks[id] = task
+	ts.tasks[strings.ToLower(id)] = task
 	return task
 }
 
@@ -58,7 +59,7 @@ func (ts *TaskStore) Get(id string) (*AsyncTask, bool) {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
-	task, ok := ts.tasks[id]
+	task, ok := ts.tasks[strings.ToLower(id)]
 	return task, ok
 }
 
@@ -67,7 +68,7 @@ func (ts *TaskStore) SetStatus(id string, status string, message string) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
-	task, ok := ts.tasks[id]
+	task, ok := ts.tasks[strings.ToLower(id)]
 	if !ok {
 		return
 	}

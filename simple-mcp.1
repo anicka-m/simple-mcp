@@ -86,11 +86,17 @@ The provided systemd service binds to \fB127.0.0.1\fR (localhost) by default.
 This prevents external access.
 
 If you need to access the API remotely, it is highly recommended to use a
-reverse proxy (such as \fBnginx\fR or \fBcaddy\fR) configured with:
+reverse proxy (such as \fBnginx\fR, \fBapache\fR, \fBcaddy\fR, or \fBtraefik\fR)
+configured with:
 .IP \[bu] 2
 SSL/TLS encryption (HTTPS)
 .IP \[bu]
-Authentication (Basic Auth, OAuth, or mTLS)
+Authentication (Basic Auth, OAuth2/OIDC, or mTLS)
+.P
+Comprehensive examples for various reverse proxies are available in the
+\fBwebauth-examples/\fR directory of the source distribution or in
+\fI/usr/share/doc/packages/simple-mcp/webauth-examples/\fR if installed via a
+package.
 .P
 Do not expose the raw port 8080 to the public internet.
 .SH USAGE WITH MCPHOST

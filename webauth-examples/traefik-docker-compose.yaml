@@ -1,0 +1,33 @@
+# Example Docker Compose for simple-mcp with Traefik.
+#
+# This setup assumes Traefik is already running as a container.
+
+services:
+  simple-mcp:
+    image: simple-mcp:latest # You'll need to build your image first
+    container_name: simple-mcp
+    restart: unless-stopped
+    command: ["/usr/bin/simple-mcp", "--config", "/etc/simple-mcp/simple-mcp.yaml", "--listen-addr", "0.0.0.0:8080"]
+    volumes:
+      - ./simple-mcp.yaml:/etc/simple-mcp/simple-mcp.yaml:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp.rule=Host(`mcp.example.com`)"
+      - "traefik.http.routers.mcp.entrypoints=websecure"
+      - "traefik.http.routers.mcp.tls.certresolver=myresolver"
+
+      # OPTION 1: Basic Authentication
+      - "traefik.http.middlewares.mcp-auth.basicauth.users=user:$$apr1$$..."
+      - "traefik.http.routers.mcp.middlewares=mcp-auth"
+
+      # OPTION 2: Forward Auth (OAuth2)
+      # - "traefik.http.middlewares.mcp-forwardauth.forwardauth.address=http://oauth2-proxy:4180"
+      # - "traefik.http.routers.mcp.middlewares=mcp-forwardauth"
+
+      - "traefik.http.services.mcp.loadbalancer.server.port=8080"
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    external: true

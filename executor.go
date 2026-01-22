@@ -34,7 +34,7 @@ func executeCommand(item ContextItem, params map[string]interface{}, workDir str
 		envVarName := fmt.Sprintf("_MCP_VAR_%s", key)
 		strValue := fmt.Sprintf("%v", value)
 		envVars = append(envVars, fmt.Sprintf("%s=%s", envVarName, strValue))
-		templateData[key] = "$" + envVarName
+		templateData[key] = "\"${" + envVarName + "}\""
 	}
 
 	// Parse the command template

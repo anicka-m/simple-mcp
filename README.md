@@ -76,7 +76,8 @@ The `spec` section also defines:
 When the `-tmpdir` flag or `tmpDir` configuration option is set, `simple-mcp`
 provides a set of tools to the LLM for manipulating files within that
 directory. This includes creating, reading, deleting, and modifying files
-(using patches), as well as copying resources into the scratch space.
+(using regex search-and-replace), as well as copying resources into the
+scratch space.
 
 ## **CLI Tool (simple-mcp-cli)**
 

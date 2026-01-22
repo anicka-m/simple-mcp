@@ -175,33 +175,57 @@ func TestScratchLogic(t *testing.T) {
 		assert.Equal(t, "hello read\n", res.Content[0].(mcp.TextContent).Text)
 	})
 
-	t.Run("ModifyFile", func(t *testing.T) {
-		_, err := createFile(tmpDir, "test-file-for-modify.txt", "hello world\n")
+	t.Run("ReplaceInFile", func(t *testing.T) {
+		_, err := createFile(tmpDir, "test-file-for-replace.txt", "hello world\nhello gopher\n")
 		require.NoError(t, err)
 
-		patch := `--- a/test-file-for-modify.txt
-+++ b/test-file-for-modify.txt
-@@ -1 +1 @@
--hello world
-+hello gopher
-`
-		res, err := modifyFile(tmpDir, "test-file-for-modify.txt", patch)
-		require.NoError(t, err)
-		assert.Equal(t, "File modified successfully.", res.Content[0].(mcp.TextContent).Text)
-		content, err := os.ReadFile(filepath.Join(tmpDir, "test-file-for-modify.txt"))
-		assert.NoError(t, err)
-		assert.Equal(t, "hello gopher\n", string(content))
-	})
+		t.Run("ReplaceFirst", func(t *testing.T) {
+			res, err := replaceInFile(tmpDir, "test-file-for-replace.txt", "hello", "hi", false)
+			require.NoError(t, err)
+			assert.Equal(t, "File modified successfully.", res.Content[0].(mcp.TextContent).Text)
+			content, _ := os.ReadFile(filepath.Join(tmpDir, "test-file-for-replace.txt"))
+			assert.Equal(t, "hi world\nhello gopher\n", string(content))
+		})
 
-	t.Run("ModifyFile_NonExistent", func(t *testing.T) {
-		patch := `--- a/non-existent-file.txt
-+++ b/non-existent-file.txt
-@@ -1 +1 @@
--hello world
-+hello gopher
-`
-		_, err := modifyFile(tmpDir, "non-existent-file.txt", patch)
-		assert.Error(t, err)
+		t.Run("ReplaceAll", func(t *testing.T) {
+			// Reset content
+			require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "test-file-for-replace.txt"), []byte("hello world\nhello gopher\n"), 0644))
+			res, err := replaceInFile(tmpDir, "test-file-for-replace.txt", "hello", "hi", true)
+			require.NoError(t, err)
+			assert.Equal(t, "File modified successfully.", res.Content[0].(mcp.TextContent).Text)
+			content, _ := os.ReadFile(filepath.Join(tmpDir, "test-file-for-replace.txt"))
+			assert.Equal(t, "hi world\nhi gopher\n", string(content))
+		})
+
+		t.Run("CaptureGroups", func(t *testing.T) {
+			require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "test-file-for-replace.txt"), []byte("version: 1.2.3\n"), 0644))
+			_, err := replaceInFile(tmpDir, "test-file-for-replace.txt", `version: (\d+\.\d+\.\d+)`, "v$1", false)
+			require.NoError(t, err)
+			content, _ := os.ReadFile(filepath.Join(tmpDir, "test-file-for-replace.txt"))
+			assert.Equal(t, "v1.2.3\n", string(content))
+		})
+
+		t.Run("MultiLine", func(t *testing.T) {
+			require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "test-file-for-replace.txt"), []byte("start\nmiddle\nend\n"), 0644))
+			_, err := replaceInFile(tmpDir, "test-file-for-replace.txt", `start.*end`, "done", false)
+			require.NoError(t, err)
+			content, _ := os.ReadFile(filepath.Join(tmpDir, "test-file-for-replace.txt"))
+			assert.Equal(t, "done\n", string(content))
+		})
+
+		t.Run("PatternNotFound", func(t *testing.T) {
+			res, err := replaceInFile(tmpDir, "test-file-for-replace.txt", "nonexistent", "replacement", false)
+			require.NoError(t, err)
+			assert.True(t, res.IsError)
+			assert.Contains(t, res.Content[0].(mcp.TextContent).Text, "pattern not found")
+		})
+
+		t.Run("InvalidRegex", func(t *testing.T) {
+			res, err := replaceInFile(tmpDir, "test-file-for-replace.txt", "[unclosed", "replacement", false)
+			require.NoError(t, err)
+			assert.True(t, res.IsError)
+			assert.Contains(t, res.Content[0].(mcp.TextContent).Text, "invalid regular expression")
+		})
 	})
 
 	t.Run("ListDirectory", func(t *testing.T) {

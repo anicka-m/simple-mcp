@@ -93,16 +93,31 @@ Use the `-server` flag to specify the server address (default: `localhost:8080`)
 
 ## **Security & Remote Access**
 
-**Important:** This tool provides shell execution capabilities.
+**Important:** This tool provides shell execution capabilities. Do not expose
+this service to the public internet without authentication.
 
 ### **Restricting Network Access**
 
 By default, simple-mcp binds to localhost:8080, allowing only local connections.
-If you need to access simple-mcp from a remote machine (e.g., an LLM running on
-a different server), **do not** expose this port directly to the internet.
 
-Instead, use a reverse proxy like Nginx or Caddy to handle authentication and
-TLS.
+The Model Context Protocol (MCP) does not implement authentication itself. If you
+need to use simple-mcp outside of the machine it is running on, it is
+highly recommended to use a **standard reverse proxy** (like Nginx, Apache, Caddy, or
+Traefik) to handle:
+
+*   **TLS/SSL Encryption:** To protect data in transit.
+*   **Authentication:** To restrict access to authorized users (e.g., Basic
+    Auth, OAuth2, OIDC).
+
+### **Example: Nginx with Basic Auth**
+
+Comprehensive examples for various reverse proxies can be found in the
+[`webauth-examples/`](./webauth-examples/) directory:
+
+*   **Nginx:** [Basic Auth](./webauth-examples/nginx-basic-auth.conf), [OAuth2/OIDC](./webauth-examples/nginx-oauth2-proxy.conf)
+*   **Apache:** [Basic Auth](./webauth-examples/apache-basic-auth.conf), [OpenID Connect](./webauth-examples/apache-oidc.conf)
+*   **Caddy:** [Basic Auth & Forward Auth](./webauth-examples/Caddyfile)
+*   **Traefik:** [Docker Labels for Basic/Forward Auth](./webauth-examples/traefik-docker-compose.yaml)
 
 ### **Parameters and Shell Injection**
 
@@ -126,32 +141,6 @@ However, users must still be careful when designing tool commands:
     maliciously crafted arguments (e.g., "Bobby Tables" scenarios).
 *   **Avoid `eval`:** Do not use `eval` or similar constructs with parameters
     in your commands, as this would re-introduce shell injection risks.
-
-### **Example: Nginx with Basic Auth**
-
-1. Install Nginx and apache2-utils.
-2. Create a password file: sudo htpasswd \-c /etc/nginx/.htpasswd myuser
-3. Configure Nginx:
-
-server {
-    listen 443 ssl;
-    server\_name mcp.example.com;
-
-    \# ... ssl config ...
-
-    location / {
-        proxy\_pass \[http://localhost:8080\](http://localhost:8080);
-
-        \# Enable Basic Authentication
-        auth\_basic "Restricted MCP Access";
-        auth\_basic\_user\_file /etc/nginx/.htpasswd;
-
-        \# WebSocket support (required for MCP)
-        proxy\_http\_version 1.1;
-        proxy\_set\_header Upgrade $http\_upgrade;
-        proxy\_set\_header Connection "upgrade";
-    }
-}
 
 ## **Usage with mcphost**
 

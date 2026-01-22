@@ -1,0 +1,20 @@
+# Example Caddy configuration for simple-mcp.
+# Caddy handles TLS automatically via Let's Encrypt.
+
+mcp.example.com {
+    # Forward all requests to simple-mcp
+    reverse_proxy localhost:8080
+
+    # OPTION 1: Basic Authentication
+    # To generate the password hash, use: caddy hash-password
+    basic_auth {
+        user $2a$14$o.v.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.
+    }
+
+    # OPTION 2: Forward Auth (for OAuth2/OIDC)
+    # Requires an external auth service like Authelia or oauth2-proxy
+    # forward_auth localhost:9091 {
+    #     uri /api/verify?rd=https://auth.example.com/
+    #     copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    # }
+}

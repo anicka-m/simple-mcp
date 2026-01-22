@@ -29,14 +29,44 @@ type AsyncTask struct {
 
 // TaskStore is a thread-safe registry for managing async tasks.
 type TaskStore struct {
-	mu    sync.RWMutex
-	tasks map[string]*AsyncTask
+	mu       sync.RWMutex
+	tasks    map[string]*AsyncTask
+	maxTasks int
 }
 
-func NewTaskStore() *TaskStore {
+func NewTaskStore(maxTasks int) *TaskStore {
 	return &TaskStore{
-		tasks: make(map[string]*AsyncTask),
+		tasks:    make(map[string]*AsyncTask),
+		maxTasks: maxTasks,
 	}
+}
+
+// PrepareSlot ensures there is room for a new task in the store.
+// If the store is full, it tries to find the oldest finished task to evict.
+// It returns the ID of the evicted task if successful, or an empty string if no eviction was needed.
+// It returns an error if the store is full and no task can be evicted (all tasks are active).
+func (ts *TaskStore) PrepareSlot() (string, error) {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	if len(ts.tasks) < ts.maxTasks {
+		return "", nil
+	}
+
+	var oldestTask *AsyncTask
+	for _, task := range ts.tasks {
+		if task.Status == "completed" || task.Status == "failed" {
+			if oldestTask == nil || task.EndTime.Before(oldestTask.EndTime) {
+				oldestTask = task
+			}
+		}
+	}
+
+	if oldestTask == nil {
+		return "", fmt.Errorf("Too many asynchronous tasks. Maximum allowed: %d", ts.maxTasks)
+	}
+
+	return oldestTask.ID, nil
 }
 
 // Create initializes a new task in the "pending" state.
@@ -53,6 +83,13 @@ func (ts *TaskStore) Create(id string, toolName string) *AsyncTask {
 	}
 	ts.tasks[strings.ToLower(id)] = task
 	return task
+}
+
+// Delete removes a task from the store.
+func (ts *TaskStore) Delete(id string) {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	delete(ts.tasks, id)
 }
 
 func (ts *TaskStore) Get(id string) (*AsyncTask, bool) {

@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -181,7 +180,7 @@ func registerBuiltinTools(mcpServer *server.MCPServer, taskStore *TaskStore, res
 		mcp.WithString(
 			"taskID",
 			mcp.Required(),
-			mcp.Description("The Task ID (UUID) or full Task URI (e.g., simple-mcp://tasks/...)"),
+			mcp.Description("The Task ID (human-readable ID) or full Task URI (e.g., simple-mcp://tasks/...)"),
 		),
 	)
 	mcpServer.AddTool(taskStatusTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -430,7 +429,8 @@ func handleAsyncTask(ctx context.Context, currentItem ContextItem, params map[st
 		srv.RemoveResource(evictURI)
 		taskStore.Delete(evictID)
 	}
-	jobID := uuid.NewString()
+
+	jobID := GenerateTaskID(currentItem.Name)
 	taskURI := fmt.Sprintf("simple-mcp://tasks/%s", jobID)
 
 	task := taskStore.Create(jobID, currentItem.Name)

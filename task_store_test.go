@@ -1,9 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
-	"fmt"
 )
 
 func TestTaskStore_CreateAndGet(t *testing.T) {
@@ -25,6 +26,23 @@ func TestTaskStore_CreateAndGet(t *testing.T) {
 	}
 	if retrieved != task {
 		t.Errorf("retrieved task pointer mismatch")
+	}
+
+	// Test case-insensitivity
+	retrievedLower, ok := ts.Get(strings.ToLower(id))
+	if !ok {
+		t.Errorf("failed to retrieve task with lowercase ID")
+	}
+	if retrievedLower != task {
+		t.Errorf("retrieved lowercase task pointer mismatch")
+	}
+
+	retrievedUpper, ok := ts.Get(strings.ToUpper(id))
+	if !ok {
+		t.Errorf("failed to retrieve task with uppercase ID")
+	}
+	if retrievedUpper != task {
+		t.Errorf("retrieved uppercase task pointer mismatch")
 	}
 }
 

@@ -33,7 +33,7 @@ func countLines(s string) int {
 	return strings.Count(s, "\n") + 1
 }
 
-func resolveOptions(cfg *Config, cliListenAddr string, cliTmpDir string, cliVerbose bool, setFlags map[string]bool) (string, string, bool) {
+func resolveOptions(cfg *Config, cliListenAddr string, cliTmpDir string, cliVerbose bool, cliMaxAsyncTasks int, setFlags map[string]bool) (string, string, bool, int) {
 	// Precedence: Command-line flag > YAML config > Default.
 	finalListenAddr := cliListenAddr
 	if !setFlags["listen-addr"] && cfg.Specification.ListenAddr != "" {
@@ -50,7 +50,12 @@ func resolveOptions(cfg *Config, cliListenAddr string, cliTmpDir string, cliVerb
 		finalVerbose = *cfg.Specification.Verbose
 	}
 
-	return finalListenAddr, finalTmpDir, finalVerbose
+	finalMaxAsyncTasks := cliMaxAsyncTasks
+	if !setFlags["max-async-tasks"] && cfg.Specification.MaxAsyncTasks != 0 {
+		finalMaxAsyncTasks = cfg.Specification.MaxAsyncTasks
+	}
+
+	return finalListenAddr, finalTmpDir, finalVerbose, finalMaxAsyncTasks
 }
 
 func main() {
@@ -58,6 +63,7 @@ func main() {
 	listenAddr := flag.String("listen-addr", "localhost:8080", "Address to listen on for HTTP requests.")
 	tmpDir := flag.String("tmpdir", "", "Path to a directory for scratch space.")
 	verbose := flag.Bool("verbose", false, "Enable verbose logging of MCP protocol messages.")
+	maxAsyncTasks := flag.Int("max-async-tasks", 20, "Maximum number of asynchronous tasks to keep in memory.")
 	flag.Parse()
 
 	cfg, err := LoadConfig(*configFile)
@@ -72,7 +78,7 @@ func main() {
 		setFlags[f.Name] = true
 	})
 
-	finalListenAddr, finalTmpDir, finalVerbose := resolveOptions(cfg, *listenAddr, *tmpDir, *verbose, setFlags)
+	finalListenAddr, finalTmpDir, finalVerbose, finalMaxAsyncTasks := resolveOptions(cfg, *listenAddr, *tmpDir, *verbose, *maxAsyncTasks, setFlags)
 
 	if finalTmpDir != "" {
 		log.Printf("Scratch space enabled at: %s", finalTmpDir)
@@ -81,8 +87,8 @@ func main() {
 		}
 	}
 
-	taskStore := NewTaskStore()
-	log.Printf("Task store initialized.")
+	taskStore := NewTaskStore(finalMaxAsyncTasks)
+	log.Printf("Task store initialized with limit: %d", finalMaxAsyncTasks)
 
 	// Pre-cache resource definitions for efficient lookup by the GetResource tool.
 	resourceMap := make(map[string]ResourceItem)
@@ -401,18 +407,29 @@ func handleSyncTask(ctx context.Context, currentItem ContextItem, params map[str
 }
 
 func handleAsyncTask(ctx context.Context, currentItem ContextItem, params map[string]interface{}, taskStore *TaskStore, tmpDir string, verbose bool) (*mcp.CallToolResult, error) {
-	// Enforce concurrency lock: prevent multiple instances of the same long-running task.
-	if taskStore.HasActiveTask(currentItem.Name) {
-		log.Printf("Rejected async task %s: task is already running.", currentItem.Name)
-		return mcp.NewToolResultError(fmt.Sprintf("Task '%s' is already in progress. Call 'ListPendingTasks' or 'TaskStatus' to monitor it.", currentItem.Name)), nil
-	}
-
 	srv := server.ServerFromContext(ctx)
 	if srv == nil {
 		log.Println("Error: could not get server from context for async task")
 		return mcp.NewToolResultError("could not get server from context"), nil
 	}
 
+	// Enforce concurrency lock: prevent multiple instances of the same long-running task.
+	if taskStore.HasActiveTask(currentItem.Name) {
+		log.Printf("Rejected async task %s: task is already running.", currentItem.Name)
+		return mcp.NewToolResultError(fmt.Sprintf("Task '%s' is already in progress. Call 'ListPendingTasks' or 'TaskStatus' to monitor it.", currentItem.Name)), nil
+	}
+
+	evictID, err := taskStore.PrepareSlot()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	if evictID != "" {
+		log.Printf("Evicting oldest task: %s", evictID)
+		evictURI := fmt.Sprintf("simple-mcp://tasks/%s", evictID)
+		srv.RemoveResource(evictURI)
+		taskStore.Delete(evictID)
+	}
 	jobID := uuid.NewString()
 	taskURI := fmt.Sprintf("simple-mcp://tasks/%s", jobID)
 

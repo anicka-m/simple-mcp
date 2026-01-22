@@ -29,6 +29,8 @@ current directory.
 * `-tmpdir <path>`: Path to a directory for the scratch space. Enabling this
   enables file manipulation tools.
 * `-verbose`: Enable verbose logging of MCP protocol messages.
+* `-max-async-tasks <number>`: Maximum number of asynchronous tasks to keep in
+  memory (default: 20).
 
 ## **Configuration**
 
@@ -38,6 +40,7 @@ following global options:
 * `listenAddr`: Same as `-listen-addr`.
 * `tmpDir`: Same as `-tmpdir`.
 * `verbose`: Same as `-verbose`.
+* `maxAsyncTasks`: Same as `-max-async-tasks`.
 
 The `spec` section also defines:
 
@@ -69,7 +72,10 @@ The `spec` section also defines:
   static content using regular expressions.
 * **Async Tasks:** Tools marked as `async: true` will run in the background.
   The server provides `ListPendingTasks` and `TaskStatus` tools to monitor
-  these jobs.
+  these jobs. The total number of tasks in memory is limited by `maxAsyncTasks`.
+  If the limit is reached, starting a new task will evict the oldest completed
+  or failed task. If all slots are filled with active (pending or running)
+  tasks, new asynchronous tasks will fail until a slot becomes available.
 
 ## **Scratch Space**
 

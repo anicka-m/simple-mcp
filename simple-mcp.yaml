@@ -7,6 +7,7 @@ spec:
   # Adding a scratch space will enable file operations (create, replace content, delete) limited to that directory
   tmpDir: ""
   verbose: false
+  maxAsyncTasks: 20
 
   resources:
     - uri: "simple-mcp://system/overview"

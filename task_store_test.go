@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 	"testing"
-	"fmt"
+	"time"
 )
 
 func TestTaskStore_CreateAndGet(t *testing.T) {
-	ts := NewTaskStore()
+	ts := NewTaskStore(10)
 	id := "job-123"
 	tool := "SystemUpgrade"
 
@@ -30,7 +31,7 @@ func TestTaskStore_CreateAndGet(t *testing.T) {
 
 func TestTaskStore_Concurrency(t *testing.T) {
 	// this test verifies the store doesn't panic under concurrent access
-	ts := NewTaskStore()
+	ts := NewTaskStore(100)
 	var wg sync.WaitGroup
 
 	// concurrently create tasks
@@ -55,7 +56,7 @@ func TestTaskStore_Concurrency(t *testing.T) {
 }
 
 func TestTaskStore_HasActiveTask(t *testing.T) {
-	ts := NewTaskStore()
+	ts := NewTaskStore(10)
 	ts.Create("1", "Upgrade")
 	ts.SetStatus("1", "running", "...")
 
@@ -66,5 +67,55 @@ func TestTaskStore_HasActiveTask(t *testing.T) {
 	ts.SetStatus("1", "completed", "done")
 	if ts.HasActiveTask("Upgrade") {
 		t.Error("expected HasActiveTask to return false after completion")
+	}
+}
+
+func TestTaskStore_Vacuum(t *testing.T) {
+	ts := NewTaskStore(2)
+
+	// 1. Fill the store with active tasks
+	ts.Create("1", "Tool1")
+	ts.SetStatus("1", "running", "...")
+	ts.Create("2", "Tool2")
+	ts.SetStatus("2", "running", "...")
+
+	// 2. Try to prepare slot, should fail
+	_, err := ts.PrepareSlot()
+	if err == nil {
+		t.Error("expected error when store is full of active tasks")
+	}
+
+	// 3. Complete one task
+	ts.SetStatus("1", "completed", "done")
+	// Ensure EndTime is set and different
+	task1, _ := ts.Get("1")
+	task1.EndTime = task1.EndTime.Add(-10 * time.Second)
+
+	// 4. Complete another task later
+	ts.SetStatus("2", "failed", "error")
+	task2, _ := ts.Get("2")
+	task2.EndTime = task2.EndTime.Add(-5 * time.Second)
+
+	// 5. Prepare slot, should return task 1 (oldest)
+	evictedID, err := ts.PrepareSlot()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if evictedID != "1" {
+		t.Errorf("expected evicted task 1, got %s", evictedID)
+	}
+
+	// 6. Delete task 1 and create a new one to fill the store again
+	ts.Delete("1")
+	ts.Create("3", "Tool3")
+	ts.SetStatus("3", "running", "...")
+
+	// 7. Prepare slot again, should return task 2 (the only completed/failed one)
+	evictedID, err = ts.PrepareSlot()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if evictedID != "2" {
+		t.Errorf("expected evicted task 2, got %s", evictedID)
 	}
 }

@@ -240,89 +240,103 @@ func TestResolveOptions(t *testing.T) {
 	tests := []struct {
 		name            string
 		cfg             *Config
-		cliListenAddr   string
-		cliTmpDir       string
-		cliVerbose      bool
-		setFlags        map[string]bool
-		expectedAddr    string
-		expectedTmp     string
-		expectedVerbose bool
+		cliListenAddr    string
+		cliTmpDir        string
+		cliVerbose       bool
+		cliMaxAsyncTasks int
+		setFlags         map[string]bool
+		expectedAddr     string
+		expectedTmp      string
+		expectedVerbose  bool
+		expectedMaxTasks int
 	}{
 		{
 			name: "Defaults only",
 			cfg: &Config{
 				Specification: Spec{},
 			},
-			cliListenAddr:   "localhost:8080",
-			cliTmpDir:       "",
-			cliVerbose:      false,
-			setFlags:        map[string]bool{},
-			expectedAddr:    "localhost:8080",
-			expectedTmp:     "",
-			expectedVerbose: false,
+			cliListenAddr:    "localhost:8080",
+			cliTmpDir:        "",
+			cliVerbose:       false,
+			cliMaxAsyncTasks: 20,
+			setFlags:         map[string]bool{},
+			expectedAddr:     "localhost:8080",
+			expectedTmp:      "",
+			expectedVerbose:  false,
+			expectedMaxTasks: 20,
 		},
 		{
 			name: "Config overrides defaults",
 			cfg: &Config{
 				Specification: Spec{
-					ListenAddr: ":9090",
-					TmpDir:     "/tmp/cfg",
-					Verbose:    &vTrue,
+					ListenAddr:    ":9090",
+					TmpDir:        "/tmp/cfg",
+					Verbose:       &vTrue,
+					MaxAsyncTasks: 50,
 				},
 			},
-			cliListenAddr:   "localhost:8080",
-			cliTmpDir:       "",
-			cliVerbose:      false,
-			setFlags:        map[string]bool{},
-			expectedAddr:    ":9090",
-			expectedTmp:     "/tmp/cfg",
-			expectedVerbose: true,
+			cliListenAddr:    "localhost:8080",
+			cliTmpDir:        "",
+			cliVerbose:       false,
+			cliMaxAsyncTasks: 20,
+			setFlags:         map[string]bool{},
+			expectedAddr:     ":9090",
+			expectedTmp:      "/tmp/cfg",
+			expectedVerbose:  true,
+			expectedMaxTasks: 50,
 		},
 		{
 			name: "CLI overrides config",
 			cfg: &Config{
 				Specification: Spec{
-					ListenAddr: ":9090",
-					TmpDir:     "/tmp/cfg",
-					Verbose:    &vTrue,
+					ListenAddr:    ":9090",
+					TmpDir:        "/tmp/cfg",
+					Verbose:       &vTrue,
+					MaxAsyncTasks: 50,
 				},
 			},
-			cliListenAddr: ":7070",
-			cliTmpDir:     "/tmp/cli",
-			cliVerbose:    false,
+			cliListenAddr:    ":7070",
+			cliTmpDir:        "/tmp/cli",
+			cliVerbose:       false,
+			cliMaxAsyncTasks: 10,
 			setFlags: map[string]bool{
-				"listen-addr": true,
-				"tmpdir":      true,
-				"verbose":     true,
+				"listen-addr":     true,
+				"tmpdir":          true,
+				"verbose":         true,
+				"max-async-tasks": true,
 			},
-			expectedAddr:    ":7070",
-			expectedTmp:     "/tmp/cli",
-			expectedVerbose: false,
+			expectedAddr:     ":7070",
+			expectedTmp:      "/tmp/cli",
+			expectedVerbose:  false,
+			expectedMaxTasks: 10,
 		},
 		{
 			name: "Mixed override",
 			cfg: &Config{
 				Specification: Spec{
-					ListenAddr: ":9090",
-					TmpDir:     "/tmp/cfg",
-					Verbose:    &vTrue,
+					ListenAddr:    ":9090",
+					TmpDir:        "/tmp/cfg",
+					Verbose:       &vTrue,
+					MaxAsyncTasks: 50,
 				},
 			},
-			cliListenAddr: ":7070",
-			cliTmpDir:     "",
-			cliVerbose:    false,
+			cliListenAddr:    ":7070",
+			cliTmpDir:        "",
+			cliVerbose:       false,
+			cliMaxAsyncTasks: 10,
 			setFlags: map[string]bool{
 				"listen-addr": true,
 			},
-			expectedAddr:    ":7070",
-			expectedTmp:     "/tmp/cfg",
-			expectedVerbose: true,
+			expectedAddr:     ":7070",
+			expectedTmp:      "/tmp/cfg",
+			expectedVerbose:  true,
+			expectedMaxTasks: 50,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			addr, tmp, verb := resolveOptions(tt.cfg, tt.cliListenAddr, tt.cliTmpDir, tt.cliVerbose, tt.setFlags)
+			addr, tmp, verb, maxTasks := resolveOptions(tt.cfg, tt.cliListenAddr, tt.cliTmpDir, tt.cliVerbose, tt.cliMaxAsyncTasks, tt.setFlags)
 			if addr != tt.expectedAddr {
 				t.Errorf("expected addr %s, got %s", tt.expectedAddr, addr)
 			}
@@ -331,6 +345,9 @@ func TestResolveOptions(t *testing.T) {
 			}
 			if verb != tt.expectedVerbose {
 				t.Errorf("expected verbose %v, got %v", tt.expectedVerbose, verb)
+			}
+			if maxTasks != tt.expectedMaxTasks {
+				t.Errorf("expected maxTasks %d, got %d", tt.expectedMaxTasks, maxTasks)
 			}
 		})
 	}

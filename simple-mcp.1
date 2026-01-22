@@ -4,7 +4,7 @@ simple-mcp \- Simple Model Context Protocol (MCP) server in Go
 .SH SYNOPSIS
 .B simple-mcp
 [\fI\-config file\fR] [\fI\-listen-addr address\fR] [\fI\-tmpdir directory\fR]
-[\fI\-verbose\fR]
+[\fI\-verbose\fR] [\fI\-max-async-tasks number\fR]
 .SH DESCRIPTION
 .B simple-mcp
 is a lightweight server implementing the Model Context Protocol (MCP). It is
@@ -35,6 +35,11 @@ tools for file manipulation within this directory.
 .TP
 .B \-verbose
 Enable verbose logging of MCP protocol messages.
+.TP
+.BI \-max-async-tasks " number"
+Maximum number of asynchronous tasks to keep in memory.
+.br
+Default: \fI20\fR.
 
 .SH CONFIGURATION
 The behavior of the server is defined in \fBsimple-mcp.yaml\fR.
@@ -46,6 +51,8 @@ The \fBspec\fR section supports the following global options:
 \fBtmpDir:\fR Same as \fB\-tmpdir\fR.
 .IP \[bu]
 \fBverbose:\fR Same as \fB\-verbose\fR.
+.IP \[bu]
+\fBmaxAsyncTasks:\fR Same as \fB\-max-async-tasks\fR.
 
 .P
 The configuration also defines:

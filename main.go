@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -75,10 +76,23 @@ func main() {
 	finalListenAddr, finalTmpDir, finalVerbose := resolveOptions(cfg, *listenAddr, *tmpDir, *verbose, setFlags)
 
 	if finalTmpDir != "" {
-		log.Printf("Scratch space enabled at: %s", finalTmpDir)
+		// Verify the directory exists and is writable first.
 		if err := checkTmpDir(finalTmpDir); err != nil {
 			log.Fatalf("ERROR: Invalid scratch space directory: %v", err)
 		}
+
+		// Resolve it to its absolute, real physical path.
+		absTmpDir, err := filepath.Abs(finalTmpDir)
+		if err != nil {
+			log.Fatalf("ERROR: Could not get absolute path for scratch space: %v", err)
+		}
+		realTmpDir, err := filepath.EvalSymlinks(absTmpDir)
+		if err != nil {
+			log.Fatalf("ERROR: Could not resolve symlinks for scratch space: %v", err)
+		}
+		finalTmpDir = realTmpDir
+
+		log.Printf("Scratch space enabled at: %s", finalTmpDir)
 	}
 
 	taskStore := NewTaskStore()

@@ -82,6 +82,7 @@ directory.
 Since \fBsimple-mcp\fR provides shell access, it is critical to restrict network
 access.
 
+.SS Restricting Network Access
 The provided systemd service binds to \fB127.0.0.1\fR (localhost) by default.
 This prevents external access.
 
@@ -93,6 +94,28 @@ SSL/TLS encryption (HTTPS)
 Authentication (Basic Auth, OAuth, or mTLS)
 .P
 Do not expose the raw port 8080 to the public internet.
+
+.SS Parameters and Shell Injection
+\fBsimple-mcp\fR uses environment variables to pass parameters to shell commands.
+This prevents direct command injection (e.g., passing \fIdummy; touch /tmp/evil\fR
+as a parameter will not execute the second command).
+
+However, users must still be careful when designing tool commands:
+.IP \[bu] 2
+\fBArgument Splitting & Globbing:\fR By default, if you use \fB{{.param}}\fR
+without quotes, the shell will expand the variable and then perform word
+splitting and globbing.
+.IP \[bu]
+\fBUse Double Quotes:\fR It is highly recommended to use double quotes around
+parameters: \fB"{{.param}}"\fR. This ensures the shell treats the parameter
+as a single string and prevents globbing.
+.IP \[bu]
+\fBInput Validation:\fR While direct execution is prevented, parameters are
+still passed to underlying programs. Ensure these programs handle untrusted
+input safely (avoiding "Bobby Tables" scenarios).
+.IP \[bu]
+\fBAvoid eval:\fR Do not use \fBeval\fR or similar constructs with parameters,
+as this re-introduces shell injection risks.
 .SH USAGE WITH MCPHOST
 This server is compatible with \fBmcphost\fR. An example configuration is
 provided in \fImcphost.yaml\fR.
